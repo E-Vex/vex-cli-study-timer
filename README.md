@@ -1,5 +1,10 @@
 # Vex CLI Study Timer ⏱
 
+<p align="center">
+  <img src="assets/demo.png" alt="Vex CLI Study Timer Demo" width="700">
+</p>
+
+
 A simple command-line study timer written in C for Linux.
 
 I built this project to practice working with CLI arguments, project structure, and Linux system calls.
