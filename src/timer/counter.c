@@ -6,6 +6,25 @@
 
 #include "timer.h"
 
+/*
+ * =====================================================================================
+ * PLATFORM DEPENDENCY WARNING:
+ * The functions below rely on direct Linux system calls using inline x86_64 assembly
+ * (rax, rdi, rsi registers and the 'syscall' instruction).
+ *
+ * Target Environment:
+ *   - OS: Linux ONLY
+ *   - Architecture: x86_64 (AMD64) ONLY
+ *
+ * Non-Portable: This code will fail to compile or run on Windows, macOS,
+ * or non-x86_64 architectures (ARM/AArch64, x86_32, RISC-V).
+ * =====================================================================================
+ */
+
+#if !defined(__linux__) || !defined(__x86_64__)
+#error "This module uses raw x86_64 Linux system calls and can only be compiled on Linux x86_64."
+#endif
+
 typedef struct
 {
     long seconds;
@@ -44,11 +63,12 @@ long vext_start_time()
     return t.seconds;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// The old counter (v1) relied on the program's own sleep to advance                                         //
-// time, so drift accumulated from per-tick overhead (syscalls,                                              //
-// printf, alarms) made it inaccurate over long sessions.                                                    //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*=====================================================================================
+ * The old counter (v1) relied on the program's own sleep to advance                                         //
+ * time, so drift accumulated from per-tick overhead (syscalls,                                              //
+ * printf, alarms) made it inaccurate over long sessions.                                                    //
+ *=====================================================================================
+ */
 uint_fast8_t vext_counter(timer_config_t *timer_config)
 {
     vext_sleeper(1, 0);
@@ -80,12 +100,13 @@ uint_fast8_t vext_counter(timer_config_t *timer_config)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Counter v2 reads the kernel's monotonic clock directly instead,                                           //
-// so it stays accurate regardless of per-tick overhead.                                                     //
-// Note: vext_sleeper() here only paces the display refresh rate;                                            //
-// it has no effect on the actual remaining time calculation.                                                //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*=====================================================================================
+ * Counter v2 reads the kernel's monotonic clock directly instead,                                           //
+ * so it stays accurate regardless of per-tick overhead.                                                     //
+ * Note: vext_sleeper() here only paces the display refresh rate;                                            //
+ * it has no effect on the actual remaining time calculation.                                                //
+ *=====================================================================================
+ */
 uint_fast8_t vext_counter_v2(timer_config_t *timer_config)
 {
     timer_config->time_now.sec = vext_start_time();
