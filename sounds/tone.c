@@ -5,6 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <time.h>
 
 #define SAMPLE_RATE 44100
 #define PI 3.14159265358979323846
@@ -147,7 +148,10 @@ void play_rest(float duration_sec)
         return;
     }
 
-    usleep((int)(duration_sec * 1000000));
+    struct timespec ts;
+    ts.tv_sec = (time_t)duration_sec;
+    ts.tv_nsec = (long)((duration_sec - ts.tv_sec) * 1e9);
+    nanosleep(&ts, NULL);
 }
 
 /* --- SONG COMPOSITIONS --- */
