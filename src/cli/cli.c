@@ -14,13 +14,15 @@ int is_int(const char *str)
     if (*str == '+' && *(str + 1) != '\0')
         str++;
 
+    int digit_count = 0;
     while (*str != '\0')
     {
         if (!isdigit((unsigned char)*str))
             return 0;
+        digit_count++;
         str++;
     }
-    return SUCCESS;
+    return digit_count <= 9;
 }
 
 int parse_timer_args(int argc, char *argv[], timer_config_t *timer_config)
