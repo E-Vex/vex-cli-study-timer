@@ -2,13 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "../timer/timer.h"
 
-#define FLAGS_ERROR 0
-#define SESSION_ERROR 2
-#define SESSION_TIME_ERROR 3
-#define BREAK_TIME_ERROR 4
-#define ARGC_ERROR 5
+#include "cli.h"
 
 int is_int(char *str)
 {
