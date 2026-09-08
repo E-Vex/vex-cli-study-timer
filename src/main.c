@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 
     int parse_result = parse_timer_args(argc, argv, &timer_config);
 
-    if (parse_result == 1)
+    if (parse_result == SUCCESS)
     {
         vext_controller(&timer_config);
     }

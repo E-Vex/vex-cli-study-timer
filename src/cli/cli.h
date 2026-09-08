@@ -8,6 +8,7 @@
 #include "../timer/timer.h"
 
 #define FLAGS_ERROR 0
+#define SUCCESS 1
 #define SESSION_ERROR 2
 #define SESSION_TIME_ERROR 3
 #define BREAK_TIME_ERROR 4

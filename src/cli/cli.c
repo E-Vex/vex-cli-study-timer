@@ -20,7 +20,7 @@ int is_int(const char *str)
             return 0;
         str++;
     }
-    return 1;
+    return SUCCESS;
 }
 
 int parse_timer_args(int argc, char *argv[], timer_config_t *timer_config)
