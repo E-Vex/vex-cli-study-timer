@@ -78,5 +78,9 @@ This project was mainly created as a learning exercise to understand how command
 
 ---
 
+## LICENSE
+
+[![License: MIT](https://img.shields.io/github/license/gcla/termshark.svg?color=yellow)](LICENSE)
+
 Built by E-Vex
 
