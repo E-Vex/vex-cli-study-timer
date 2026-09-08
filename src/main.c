@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        /*run the error handler*/
+        return EXIT_FAILURE;
     }
 
     return 0;
