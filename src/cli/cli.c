@@ -33,6 +33,11 @@ int parse_timer_args(int argc, char *argv[], timer_config_t *timer_config)
         return ARGC_ERROR;
     }
 
+    /* TODO: argc == 7 only checks the total arg count, not which flags
+     * appeared. Repeating a flag (e.g. "-s 5 -s 6") currently overwrites
+     * silently instead of being rejected, and a missing flag (e.g. no -t)
+     * isn't caught as long as argc still adds up to 7. Needs per-flag
+     * "seen" tracking to fix properly. */
     for (int i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "-s") == 0)
