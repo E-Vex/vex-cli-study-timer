@@ -5,7 +5,7 @@
 
 #include "cli.h"
 
-int is_int(char *str)
+int is_int(const char *str)
 {
 
     if (*str == '\0')

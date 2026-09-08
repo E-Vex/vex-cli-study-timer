@@ -13,7 +13,7 @@
 #define BREAK_TIME_ERROR 4
 #define ARGC_ERROR 5
 
-int is_int(char *str);
+int is_int(const char *str);
 int parse_timer_args(int argc, char *argv[], timer_config_t *timer_config);
 
 #endif
