@@ -5,6 +5,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* Status codes returned by vext_validator / vext_study / vext_break /
+   vext_input_validator. Replaces the previous raw hex "magic numbers"
+   (0x0, 0xA, 0xB, 0xAA, 0xBB, 0x1F) with self-documenting names. */
+typedef enum
+{
+    VEXT_STATUS_VALID        = 0x0,  /* generic OK / valid state            */
+    VEXT_STATUS_FINISH       = 0xA,  /* end of all sessions                 */
+    VEXT_STATUS_BREAK_PHASE  = 0xB,  /* end of a study session -> break     */
+    VEXT_STATUS_STUDY_DONE   = 0xAA, /* a study session has completed       */
+    VEXT_STATUS_BREAK_DONE   = 0xBB, /* a break has completed               */
+    VEXT_STATUS_OUT_OF_RANGE = 0x1F  /* invalid/out-of-range input          */
+} vext_status_t;
+
 typedef struct
 {
     uint32_t sec;
