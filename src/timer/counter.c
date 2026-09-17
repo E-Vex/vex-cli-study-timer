@@ -130,8 +130,8 @@ uint_fast8_t vext_counter_v2(timer_config_t *timer_config)
         return 0x0; /*End of the timer*/
     }
 
-    vext_sleeper(1, 0); /*the sleep here dose not effect on the timer. Just for the display*/
-
-    return 0xFF; /*Time is working*/
+    uint_fast8_t ret = (remaining % 60 == 0) ? 0x01 : 0xFF;
+    vext_sleeper(1, 0);
+    return ret;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
