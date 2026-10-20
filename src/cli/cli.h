@@ -2,19 +2,19 @@
 #define CLI_H
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+
 #include "../timer/timer.h"
 
-#define FLAGS_ERROR 0
-#define SUCCESS 1
-#define SESSION_ERROR 2
-#define SESSION_TIME_ERROR 3
-#define BREAK_TIME_ERROR 4
-#define ARGC_ERROR 5
+typedef enum
+{
+    CLI_RESULT_ERROR = 0,
+    CLI_RESULT_OK = 1,
+    CLI_RESULT_HELP = 2,
+    CLI_RESULT_VERSION = 3
+} cli_result_t;
 
-int is_int(const char *str);
-int parse_timer_args(int argc, char *argv[], timer_config_t *timer_config);
+void print_usage(FILE *stream);
+void print_version(void);
+cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_config);
 
 #endif

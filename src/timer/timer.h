@@ -1,13 +1,18 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
+#define VEXT_MAX_SESSIONS 255U
+#define VEXT_MAX_MINUTES 255U
+
+#define VEXT_NS_PER_SECOND 1000000000ULL
+#define VEXT_NS_PER_MINUTE (60ULL * VEXT_NS_PER_SECOND)
+
 /* Status codes returned by vext_validator / vext_study / vext_break /
-   vext_input_validator. Replaces the previous raw hex "magic numbers"
-   (0x0, 0xA, 0xB, 0xAA, 0xBB, 0x1F) with self-documenting names. */
+   vext_input_validator. */
 typedef enum
 {
     VEXT_STATUS_VALID        = 0x0,  /* generic OK / valid state            */
@@ -20,22 +25,6 @@ typedef enum
 
 typedef struct
 {
-    uint32_t sec;
-    uint32_t min;
-    uint32_t remaining_sec;
-
-} started_time_t;
-
-typedef struct
-{
-    uint32_t sec;
-    uint32_t min;
-    uint32_t remaining_sec;
-
-} time_now_t;
-
-typedef struct
-{
     uint32_t session;      /* total number of study sessions */
     uint32_t session_time; /* duration of each session, in minutes */
     uint32_t break_time;   /* duration of break between sessions, in minutes */
@@ -44,15 +33,12 @@ typedef struct
     uint32_t min;
     uint32_t ses;
 
-    started_time_t started_time;
-    time_now_t time_now;
-
-    uint32_t target_end_sec; /* absolute monotonic time at which the current phase (study/break) must end */
+    uint64_t target_end_ns; /* absolute monotonic time at which the current phase ends */
 
     uint8_t validator_status;
 
 } timer_config_t;
 
-void vext_controller(timer_config_t *timer_config);
+int vext_controller(timer_config_t *timer_config);
 
 #endif

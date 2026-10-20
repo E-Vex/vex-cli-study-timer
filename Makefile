@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -Wall -Wextra -std=c11 -I.
+CFLAGS = -Wall -Wextra -std=c11 -I. -O2
 LDFLAGS = -lm
 
 SRC = \

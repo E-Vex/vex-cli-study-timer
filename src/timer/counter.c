@@ -1,10 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include <errno.h>
 #include <stdint.h>
 #include <sys/syscall.h>
 #include <time.h>
 
-#include "timer.h"
+#include "counter.h"
 
 /*
  * =====================================================================================
@@ -31,107 +32,94 @@ typedef struct
     long nanoseconds;
 } vex_timespec_t;
 
-void vext_sleeper(int sec, int n_sec)
+static long vext_syscall_clock_gettime(vex_timespec_t *time_spec)
 {
-
-    vex_timespec_t time_to_sleep = {sec, n_sec};
-
-    register long syscall_number __asm__("rax") = SYS_nanosleep;
-    register vex_timespec_t *rdi __asm__("rdi") = &time_to_sleep;
-    register void *rsi __asm__("rsi") = NULL;
+    long result;
 
     __asm__ volatile(
         "syscall"
-        :
-        : "r"(syscall_number), "r"(rdi), "r"(rsi)
+        : "=a"(result)
+        : "a"((long)SYS_clock_gettime), "D"((long)CLOCK_MONOTONIC), "S"(time_spec)
         : "rcx", "r11", "memory");
-}
-long vext_start_time()
-{
-    vex_timespec_t t = {0, 0};
 
-    register long syscall_number __asm__("rax") = SYS_clock_gettime;
-    register long rdi __asm__("rdi") = CLOCK_MONOTONIC;
-    register vex_timespec_t *rsi __asm__("rsi") = &t;
+    return result;
+}
+
+static long vext_syscall_nanosleep(const vex_timespec_t *request, vex_timespec_t *remaining)
+{
+    long result;
 
     __asm__ volatile(
         "syscall"
-        :
-        : "r"(syscall_number), "r"(rdi), "r"(rsi)
+        : "=a"(result)
+        : "a"((long)SYS_nanosleep), "D"(request), "S"(remaining)
         : "rcx", "r11", "memory");
 
-    return t.seconds;
+    return result;
 }
 
-/*=====================================================================================
- * The old counter (v1) relied on the program's own sleep to advance                                         //
- * time, so drift accumulated from per-tick overhead (syscalls,                                              //
- * printf, alarms) made it inaccurate over long sessions.                                                    //
- *=====================================================================================
- */
-uint_fast8_t vext_counter(timer_config_t *timer_config)
+uint64_t vext_now_ns(void)
 {
-    vext_sleeper(1, 0);
+    vex_timespec_t time_spec = {0, 0};
 
-    /* decrease one second if the sec is greater than 00 */
-    if (timer_config->sec > 0)
-    {
-        timer_config->sec -= 1;
-    }
-    /*---------------------------------------------------*/
+    if (vext_syscall_clock_gettime(&time_spec) != 0)
+        return 0;
 
-    /* when sec become zero and the min is greater than 00, decrease the minutes by 1 */
-    if (timer_config->sec <= 0 && timer_config->min > 0)
-    {
-        timer_config->min -= 1;
-        timer_config->sec = 60;
-        return 0x01; /*End of a minute*/
-    }
-    /*--------------------------------------------------------------------------------*/
-
-    /* end of counting operation when sec and min are both 0 */
-    if (timer_config->sec <= 0 && timer_config->min <= 0)
-    {
-        return 0x0; /*End of the timer*/
-    }
-    /*-------------------------------------------------------*/
-
-    return 0xFF; /*Time is working*/
+    return (uint64_t)time_spec.seconds * VEXT_NS_PER_SECOND +
+           (uint64_t)time_spec.nanoseconds;
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*=====================================================================================
- * Counter v2 reads the kernel's monotonic clock directly instead,                                           //
- * so it stays accurate regardless of per-tick overhead.                                                     //
- * Note: vext_sleeper() here only paces the display refresh rate;                                            //
- * it has no effect on the actual remaining time calculation.                                                //
- *=====================================================================================
+static void vext_sleep_ns(uint64_t duration_ns)
+{
+    uint64_t remaining_ns = duration_ns;
+
+    while (remaining_ns > 0)
+    {
+        vex_timespec_t request = {
+            (long)(remaining_ns / VEXT_NS_PER_SECOND),
+            (long)(remaining_ns % VEXT_NS_PER_SECOND)};
+        vex_timespec_t remaining = {0, 0};
+        long result = vext_syscall_nanosleep(&request, &remaining);
+
+        if (result == 0)
+            return;
+
+        if (result != -EINTR)
+            return;
+
+        remaining_ns = (uint64_t)remaining.seconds * VEXT_NS_PER_SECOND +
+                       (uint64_t)remaining.nanoseconds;
+    }
+}
+
+/*
+ * The countdown is based on an absolute CLOCK_MONOTONIC deadline rather than on
+ * accumulating sleeps. This keeps it accurate even when a tick is delayed by
+ * terminal output, alarm handling, or an interrupted nanosleep().
  */
 uint_fast8_t vext_counter_v2(timer_config_t *timer_config)
 {
-    timer_config->time_now.sec = vext_start_time();
+    uint64_t now_ns = vext_now_ns();
+    uint64_t remaining_ns = 0;
+    uint64_t remaining_seconds;
+    uint64_t sleep_ns;
 
-    uint32_t remaining;
-    if (timer_config->time_now.sec >= timer_config->target_end_sec) /* Prevent negative remaining time */
-    {
-        remaining = 0;
-    }
-    else
-    {
-        remaining = timer_config->target_end_sec - timer_config->time_now.sec;
-    }
+    if (timer_config->target_end_ns > now_ns)
+        remaining_ns = timer_config->target_end_ns - now_ns;
 
-    timer_config->min = remaining / 60;
-    timer_config->sec = remaining % 60;
+    /* Round up so a fresh 25-minute phase starts by displaying 25:00. */
+    remaining_seconds = (remaining_ns + VEXT_NS_PER_SECOND - 1) / VEXT_NS_PER_SECOND;
+    timer_config->min = (uint32_t)(remaining_seconds / 60);
+    timer_config->sec = (uint32_t)(remaining_seconds % 60);
 
-    /* end of counting operation */
-    if (remaining <= 0)
-    {
-        return 0x0; /*End of the timer*/
-    }
+    if (remaining_ns == 0)
+        return 0x0; /* End of the timer */
 
-    uint_fast8_t ret = (remaining % 60 == 0) ? 0x01 : 0xFF;
-    vext_sleeper(1, 0);
-    return ret;
+    /* Wake up when the displayed second changes. */
+    sleep_ns = remaining_ns % VEXT_NS_PER_SECOND;
+    if (sleep_ns == 0)
+        sleep_ns = VEXT_NS_PER_SECOND;
+
+    vext_sleep_ns(sleep_ns);
+    return 0xFF; /* Time is working */
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////

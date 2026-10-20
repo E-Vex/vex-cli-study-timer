@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <math.h>
 
+int vext_audio_available(void);
+int vext_audio_start(void);
+
 void play_some_beep(void);
 void play_mario_theme(void);
 void play_imperial_march(void);

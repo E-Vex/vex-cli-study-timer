@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <math.h>
 #include <unistd.h>
 #include <sys/select.h>
@@ -37,17 +39,11 @@
 
 int stop_playback = 0;
 static FILE *g_audio_pipe = NULL;
+static int g_audio_checked = 0;
+static int g_audio_available = 0;
+static int g_atexit_registered = 0;
 
 /* --- AUDIO PIPE MANAGEMENT --- */
-
-static FILE *get_audio_pipe(void)
-{
-    if (g_audio_pipe == NULL)
-    {
-        g_audio_pipe = popen("aplay -f S16_LE -r 44100 -c 1 -q", "w");
-    }
-    return g_audio_pipe;
-}
 
 static void close_audio_pipe(void)
 {
@@ -56,6 +52,42 @@ static void close_audio_pipe(void)
         pclose(g_audio_pipe);
         g_audio_pipe = NULL;
     }
+}
+
+int vext_audio_available(void)
+{
+    if (!g_audio_checked)
+    {
+        g_audio_checked = 1;
+        g_audio_available = (system("command -v aplay >/dev/null 2>&1") == 0);
+    }
+
+    return g_audio_available;
+}
+
+static FILE *get_audio_pipe(void)
+{
+    if (g_audio_pipe == NULL)
+    {
+        if (!vext_audio_available())
+            return NULL;
+
+        signal(SIGPIPE, SIG_IGN);
+        g_audio_pipe = popen("aplay -f S16_LE -r 44100 -c 1 -q", "w");
+
+        if (g_audio_pipe != NULL && !g_atexit_registered)
+        {
+            atexit(close_audio_pipe);
+            g_atexit_registered = 1;
+        }
+    }
+
+    return g_audio_pipe;
+}
+
+int vext_audio_start(void)
+{
+    return get_audio_pipe() != NULL;
 }
 
 /* --- INPUT HANDLING --- */
@@ -619,6 +651,10 @@ void play_hard_to_say_goodbye()
 void play_finish_music()
 {
     stop_playback = 0;
+
+    if (!vext_audio_start())
+        return;
+
     float C3 = 130.81, F3 = 174.61, G3 = 196.00, A3 = 220.00;
     float B3 = 246.94, C4 = 261.63, D4 = 293.66, E4 = 329.63;
     float G4 = 392.00;
