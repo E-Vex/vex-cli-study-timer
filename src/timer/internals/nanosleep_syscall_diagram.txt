@@ -1,24 +1,35 @@
 =====================================================================
->  vex_sleep (nanosleep syscall) - Memory & Registers Architecture  <
+>  vext_sleep_ns (nanosleep syscall) - Memory & Registers          <
 =====================================================================
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                         STACK MEMORY (RAM)                      │
 │                                                                 │
-│   time_to_sleep:                                                │
-│   ┌──────────────┬──────────────┐                               │
-│   │ tv_sec = sec │ tv_nsec=n_sec│   Memory address: 0x7ffd...   │
-│   └──────────────┴──────────────┘                               │
+│   request (how long to sleep):                                  │
+│   ┌──────────────────┬──────────────────────┐                   │
+│   │ tv_sec = seconds │ tv_nsec = nanoseconds│                   │
+│   └──────────────────┴──────────────────────┘                   │
 │         ▲                                                       │
-│         │  &time_to_sleep (address)                             │
+│         │  &request (address)                                   │
+│                                                                 │
+│   remaining (filled by the kernel if interrupted):              │
+│   ┌──────────────────┬──────────────────────┐                   │
+│   │ tv_sec = left    │ tv_nsec = left       │                   │
+│   └──────────────────┴──────────────────────┘                   │
+│         ▲                                                       │
+│         │  &remaining (address)                                 │
 └─────────┼───────────────────────────────────────────────────────┘
           │
           │
 ┌─────────┼─────────────── CPU REGISTERS ─────────────────────────┐
 │         │                                                       │
 │   RAX = 35              ← syscall number (nanosleep)            │
-│   RDI = ────────────────┘ ← pointer to time_to_sleep (arg 1)    │
-│   RSI = 0               ← NULL (arg 2, we don't care about it)  │
+│   RDI = ────────────────┘ ← pointer to request (arg 1)          │
+│   RSI = ──────────────────← pointer to remaining (arg 2)        │
 │   RDX = (not used in this case)                                 │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
+The kernel writes the unslept time into `remaining` when the sleep is
+interrupted (EINTR). The caller can then retry with the remaining duration
+instead of restarting the full sleep.

@@ -7,8 +7,8 @@ USER SPACE (Your Program)                   KERNEL SPACE (Operating System)
 ─────────────────────────                   ───────────────────────────────
 
 RAX=35  ─┐
-RDI=ptr ─┤
-RSI=0   ─┤
+RDI=ptr ─┤  (pointer to request)
+RSI=ptr ─┤  (pointer to remaining)
          │
 ┌────────▼────────┐
 │     syscall     │   CPU jumps
@@ -19,17 +19,17 @@ RSI=0   ─┤
                                         │   -> This is nanosleep  │
                                         │                         │
                                         │ 2. Reads RDI            │
-                                        │   -> Goes to the memory │
-                                        │    address to fetch     │
-                                        │    tv_sec, tv_nsec      │
+                                        │   -> Fetches tv_sec and │
+                                        │    tv_nsec from request │
                                         │                         │
-                                        │ 3. RSI = 0              │
-                                        │   -> Will not store the │
-                                        │    "remaining time"     │
+                                        │ 3. Saves RSI            │
+                                        │   -> Uses it to store   │
+                                        │    unslept time if the  │
+                                        │    sleep is interrupted │
                                         │                         │
-                                        │ 4. Program is put to    │
-                                        │    "sleep" for the      │
-                                        │    sec.nsec duration    │
+                                        │ 4. Puts the program to  │
+                                        │    sleep for the        │
+                                        │    requested duration   │
                                         └───────────┬─────────────┘
                                                     │
                            (After time expires)     │
@@ -38,4 +38,22 @@ RSI=0   ─┤
 │ Control returns to   │ ◄──────────────────────────┘
 │ the line right after │
 │ the "syscall"        │
+│ RAX = 0 on success   │
+│ RAX = -EINTR if      │
+│ interrupted          │
 └──────────────────────┘
+
+
+===================================================================
+->              Related syscall: clock_gettime                  <-
+===================================================================
+
+The countdown also calls clock_gettime directly:
+
+  RAX = 228               ← syscall number (clock_gettime)
+  RDI = 1                 ← CLOCK_MONOTONIC
+  RSI = &timespec         ← receives seconds + nanoseconds
+
+CLOCK_MONOTONIC cannot jump backwards when the wall clock is adjusted, which
+makes it suitable for measuring elapsed time. The timer stores an absolute
+deadline and compares it with this clock on every display tick.
