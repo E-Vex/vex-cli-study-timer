@@ -1,0 +1,49 @@
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} / ${{ matrix.cc }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+          - os: ubuntu-latest
+            cc: clang
+          - os: macos-latest
+            cc: clang
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: make CC="${{ matrix.cc }}" CFLAGS="-Wall -Wextra -Werror -std=c11 -I. -O2"
+
+      - name: Run tests
+        run: make test CC="${{ matrix.cc }}" CFLAGS="-Wall -Wextra -Werror -std=c11 -I. -O2"
+
+      - name: CLI smoke test
+        run: |
+          ./vex-timer --version
+          ./vex-timer --help >/dev/null
+
+          if ./vex-timer -s 0 -t 25 -b 5 >/dev/null 2>&1; then
+            echo "expected invalid arguments to fail" >&2
+            exit 1
+          fi
+
+          if ./vex-timer -s 1 -t 25 -b 5 -a bogus >/dev/null 2>&1; then
+            echo "expected an unknown alarm to fail" >&2
+            exit 1
+          fi

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../input/input.h"
 #include "alarm.h"
 #include "counter.h"
 #include "print.h"
@@ -17,67 +18,6 @@ uint_fast8_t vext_validator(timer_config_t *timer_config)
     return VEXT_STATUS_BREAK_PHASE; /* Break phase: end of a study session */
 }
 
-uint_fast8_t vext_study(timer_config_t *timer_config)
-{
-    timer_config->sec = 0;
-    timer_config->min = timer_config->session_time;
-    timer_config->validator_status = VEXT_STATUS_VALID;
-
-    timer_config->target_end_ns = vext_now_ns() +
-                                  (uint64_t)timer_config->session_time * VEXT_NS_PER_MINUTE;
-
-    while (1)
-    {
-        vext_printer(timer_config);
-
-        if (vext_counter_v2(timer_config) == 0x0)
-        {
-            vext_printer(timer_config);
-            break;
-        }
-    }
-
-    timer_config->ses += 1;
-
-    if (vext_validator(timer_config) == VEXT_STATUS_BREAK_PHASE)
-    {
-        vext_alarm();
-        printf("\033[H\033[J");
-        display_banner();
-        display_info(timer_config);
-    }
-
-    return VEXT_STATUS_STUDY_DONE; /* End of a study session */
-}
-
-uint_fast8_t vext_break(timer_config_t *timer_config)
-{
-    timer_config->sec = 0;
-    timer_config->min = timer_config->break_time;
-    timer_config->validator_status = VEXT_STATUS_BREAK_PHASE;
-
-    timer_config->target_end_ns = vext_now_ns() +
-                                  (uint64_t)timer_config->break_time * VEXT_NS_PER_MINUTE;
-
-    while (1)
-    {
-        vext_printer(timer_config);
-
-        if (vext_counter_v2(timer_config) == 0x0)
-        {
-            vext_printer(timer_config);
-            break;
-        }
-    }
-
-    vext_alarm();
-    printf("\033[H\033[J");
-    display_banner();
-    display_info(timer_config);
-
-    return VEXT_STATUS_BREAK_DONE; /* End of a break */
-}
-
 uint_fast8_t vext_input_validator(timer_config_t *timer_config)
 {
     if (timer_config->session == 0 || timer_config->session > VEXT_MAX_SESSIONS ||
@@ -90,9 +30,62 @@ uint_fast8_t vext_input_validator(timer_config_t *timer_config)
     return VEXT_STATUS_VALID;
 }
 
+static void display_phase_header(const timer_config_t *timer_config)
+{
+    printf("\033[H\033[J"); /* Clear the screen */
+
+    display_banner();
+    display_info(timer_config);
+
+    if (vext_input_is_interactive())
+        display_controls();
+}
+
+/*
+ * Run one study or break phase until it finishes, is skipped, or the user
+ * quits. The deadline lives in the timer config so pause/resume can rebuild it
+ * without accumulating sleep drift.
+ */
+static uint_fast8_t run_phase(timer_config_t *timer_config, uint32_t duration_minutes, int is_break)
+{
+    timer_config->sec = 0;
+    timer_config->min = duration_minutes;
+    timer_config->paused = 0;
+    timer_config->paused_remaining_ns = 0;
+    timer_config->validator_status = is_break ? VEXT_STATUS_BREAK_PHASE : VEXT_STATUS_VALID;
+    timer_config->target_end_ns = vext_now_ns() +
+                                  (uint64_t)duration_minutes * VEXT_NS_PER_MINUTE;
+
+    while (1)
+    {
+        vext_printer(timer_config);
+
+        switch (vext_counter_v2(timer_config))
+        {
+        case VEXT_COUNTER_DONE:
+            vext_printer(timer_config);
+            return is_break ? VEXT_STATUS_BREAK_DONE : VEXT_STATUS_STUDY_DONE;
+
+        case VEXT_COUNTER_SKIPPED:
+            return VEXT_STATUS_SKIPPED;
+
+        case VEXT_COUNTER_QUIT:
+            return VEXT_STATUS_QUIT;
+
+        case VEXT_COUNTER_RUNNING:
+        default:
+            break;
+        }
+    }
+}
+
 int vext_controller(timer_config_t *timer_config)
 {
+    if (timer_config->alarm == NULL)
+        timer_config->alarm = VEXT_DEFAULT_ALARM;
+
     timer_config->ses = 1;
+    timer_config->paused = 0;
     timer_config->validator_status = VEXT_STATUS_VALID;
 
     if (vext_input_validator(timer_config) == VEXT_STATUS_OUT_OF_RANGE)
@@ -102,24 +95,56 @@ int vext_controller(timer_config_t *timer_config)
         return EXIT_FAILURE;
     }
 
-    printf("\033[H\033[J"); /* Clear the screen */
+    display_phase_header(timer_config);
 
-    display_banner();
-    display_info(timer_config);
-
-    while (timer_config->validator_status != VEXT_STATUS_FINISH)
+    while (1)
     {
-        vext_study(timer_config);
+        uint_fast8_t study_status;
+        uint_fast8_t break_status;
 
+        if (vext_input_interrupted() || vext_input_quit_requested())
+            return VEXT_EXIT_INTERRUPTED;
+
+        study_status = run_phase(timer_config, timer_config->session_time, 0);
+        if (study_status == VEXT_STATUS_QUIT)
+            return VEXT_EXIT_INTERRUPTED;
+
+        timer_config->ses += 1;
         timer_config->validator_status = vext_validator(timer_config);
-        if (timer_config->validator_status == VEXT_STATUS_BREAK_PHASE)
+
+        if (timer_config->validator_status == VEXT_STATUS_FINISH)
+            break;
+
+        if (study_status != VEXT_STATUS_SKIPPED)
         {
-            vext_break(timer_config);
+            vext_alarm(timer_config->alarm);
+            if (vext_input_interrupted() || vext_input_quit_requested())
+                return VEXT_EXIT_INTERRUPTED;
+            display_phase_header(timer_config);
+        }
+
+        break_status = run_phase(timer_config, timer_config->break_time, 1);
+        if (break_status == VEXT_STATUS_QUIT)
+            return VEXT_EXIT_INTERRUPTED;
+
+        if (break_status != VEXT_STATUS_SKIPPED)
+        {
+            vext_alarm(timer_config->alarm);
+            if (vext_input_interrupted() || vext_input_quit_requested())
+                return VEXT_EXIT_INTERRUPTED;
+            display_phase_header(timer_config);
         }
     }
 
-    vext_printer(timer_config);
-    play_finish_music();
+    vext_printer(timer_config); /* Finish screen */
+
+    if (!vext_alarm_is_none(timer_config->alarm))
+    {
+        play_finish_music();
+
+        if (vext_input_interrupted() || vext_input_quit_requested())
+            return VEXT_EXIT_INTERRUPTED;
+    }
 
     return EXIT_SUCCESS;
 }

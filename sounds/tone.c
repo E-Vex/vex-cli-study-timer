@@ -5,9 +5,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <math.h>
-#include <unistd.h>
-#include <sys/select.h>
-#include <time.h>
+
+#include "../src/input/input.h"
 
 #define SAMPLE_RATE 44100
 #define PI 3.14159265358979323846
@@ -92,69 +91,79 @@ int vext_audio_start(void)
 
 /* --- INPUT HANDLING --- */
 
-int is_enter_pressed()
+static int stop_requested(void)
 {
-    struct timeval tv = {0, 0};
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
+    if (stop_playback)
+        return 1;
 
-    if (select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0)
+    if (vext_input_interrupted() || vext_input_quit_requested())
     {
-        getchar();
+        stop_playback = 1;
         return 1;
     }
+
+    if (vext_input_poll(0) != VEXT_KEY_NONE)
+    {
+        stop_playback = 1;
+        return 1;
+    }
+
     return 0;
 }
 
 /* --- AUDIO SYNTHESIS ENGINE --- */
 
-void play_beep(float frequency, float duration_sec)
+static void play_beep(float frequency, float duration_sec)
 {
-    if (stop_playback)
+    if (stop_requested())
         return;
 
-    if (is_enter_pressed())
+    FILE *pipe = get_audio_pipe();
+    if (!pipe)
     {
         stop_playback = 1;
         return;
     }
 
-    FILE *pipe = get_audio_pipe();
-    if (!pipe)
-        return;
-
     int samples = SAMPLE_RATE * duration_sec;
 
     for (int i = 0; i < samples; i++)
     {
+        if ((i & 0x0FFF) == 0 && stop_requested())
+            return;
+
         double t = (double)i / SAMPLE_RATE;
         int16_t sample = (int16_t)(32767 * sin(2 * PI * frequency * t));
-        fwrite(&sample, sizeof(sample), 1, pipe);
+
+        if (fwrite(&sample, sizeof(sample), 1, pipe) != 1)
+        {
+            stop_playback = 1;
+            return;
+        }
     }
 
     fflush(pipe);
 }
 
-void play_triad(float freq1, float freq2, float freq3, float duration_sec)
+static void play_triad(float freq1, float freq2, float freq3, float duration_sec)
 {
-    if (stop_playback)
+    if (stop_requested())
         return;
 
-    if (is_enter_pressed())
+    FILE *pipe = get_audio_pipe();
+    if (!pipe)
     {
         stop_playback = 1;
         return;
     }
 
-    FILE *pipe = get_audio_pipe();
-    if (!pipe)
-        return;
-
     int samples = SAMPLE_RATE * duration_sec;
 
     for (int i = 0; i < samples; i++)
     {
+        if ((i & 0x0FFF) == 0 && stop_requested())
+            return;
+
         double t = (double)i / SAMPLE_RATE;
 
         double wave1 = sin(2 * PI * freq1 * t);
@@ -163,27 +172,44 @@ void play_triad(float freq1, float freq2, float freq3, float duration_sec)
 
         double mixed_wave = (wave1 + wave2 + wave3) / 3.0;
         int16_t sample = (int16_t)(32767 * mixed_wave);
-        fwrite(&sample, sizeof(sample), 1, pipe);
+
+        if (fwrite(&sample, sizeof(sample), 1, pipe) != 1)
+        {
+            stop_playback = 1;
+            return;
+        }
     }
 
     fflush(pipe);
 }
 
-void play_rest(float duration_sec)
+static void play_rest(float duration_sec)
 {
-    if (stop_playback)
+    const uint64_t slice_ns = 20000000ULL; /* 20 ms */
+    uint64_t remaining_ns;
+
+    if (duration_sec <= 0.0f)
         return;
 
-    if (is_enter_pressed())
+    remaining_ns = (uint64_t)((double)duration_sec * 1000000000.0);
+
+    while (remaining_ns > 0)
     {
-        stop_playback = 1;
-        return;
-    }
+        uint64_t wait_ns;
 
-    struct timespec ts;
-    ts.tv_sec = (time_t)duration_sec;
-    ts.tv_nsec = (long)((duration_sec - ts.tv_sec) * 1e9);
-    nanosleep(&ts, NULL);
+        if (stop_requested())
+            return;
+
+        wait_ns = remaining_ns < slice_ns ? remaining_ns : slice_ns;
+
+        if (vext_input_poll(wait_ns) != VEXT_KEY_NONE)
+        {
+            stop_playback = 1;
+            return;
+        }
+
+        remaining_ns -= wait_ns;
+    }
 }
 
 /* --- SONG COMPOSITIONS --- */

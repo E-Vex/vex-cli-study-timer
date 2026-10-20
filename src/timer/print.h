@@ -5,6 +5,7 @@
 
 void display_info(const timer_config_t *timer_config);
 void display_banner(void);
+void display_controls(void);
 void display_finish(const timer_config_t *timer_config);
 void vext_printer(const timer_config_t *timer_config);
 

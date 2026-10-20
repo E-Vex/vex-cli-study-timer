@@ -5,15 +5,24 @@
 #include <string.h>
 
 #include "cli.h"
+#include "../timer/alarm.h"
 #include "../version.h"
 
-static int parse_value(const char *text, uint32_t max, uint32_t *out)
+int cli_parse_value(const char *text, uint32_t max, uint32_t *out)
 {
+    const char *cursor;
     char *end = NULL;
     long value;
 
     if (text == NULL || *text == '\0')
         return 0;
+
+    /* Accept digits only: no signs, whitespace, or trailing garbage. */
+    for (cursor = text; *cursor != '\0'; cursor++)
+    {
+        if (*cursor < '0' || *cursor > '9')
+            return 0;
+    }
 
     errno = 0;
     value = strtol(text, &end, 10);
@@ -31,10 +40,10 @@ static int parse_value(const char *text, uint32_t max, uint32_t *out)
 void print_usage(FILE *stream)
 {
     fprintf(stream,
-            "vex-timer - a Linux CLI study timer\n"
+            "vex-timer - a command-line study timer\n"
             "\n"
             "Usage:\n"
-            "  vex-timer -s <sessions> -t <focus-minutes> -b <break-minutes>\n"
+            "  vex-timer -s <sessions> -t <focus-minutes> -b <break-minutes> [-a <alarm>]\n"
             "  vex-timer -h | --help\n"
             "  vex-timer -v | --version\n"
             "\n"
@@ -42,12 +51,28 @@ void print_usage(FILE *stream)
             "  -s, --sessions N   number of study sessions (1-%u, required)\n"
             "  -t, --focus N      study duration in minutes (1-%u, required)\n"
             "  -b, --break N      break duration in minutes (1-%u, required)\n"
+            "  -a, --alarm NAME   alarm sound (default: %s)\n"
             "  -h, --help         show this help message\n"
             "  -v, --version      show version information\n"
             "\n"
+            "Alarm sounds:\n"
+            "  ",
+            VEXT_MAX_SESSIONS, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES, VEXT_DEFAULT_ALARM);
+
+    vext_alarm_print_names(stream);
+
+    fprintf(stream,
+            "\n"
+            "\n"
+            "Controls:\n"
+            "  Space/P  pause or resume the current phase\n"
+            "  S        skip the current phase\n"
+            "  Q        quit immediately\n"
+            "  Any key  stop a ringing alarm\n"
+            "  Ctrl+C   quit\n"
+            "\n"
             "Example:\n"
-            "  vex-timer -s 4 -t 25 -b 5\n",
-            VEXT_MAX_SESSIONS, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES);
+            "  vex-timer -s 4 -t 25 -b 5 -a tetris\n");
 }
 
 void print_version(void)
@@ -60,6 +85,9 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
     int seen_sessions = 0;
     int seen_focus = 0;
     int seen_break = 0;
+    int seen_alarm = 0;
+
+    timer_config->alarm = VEXT_DEFAULT_ALARM;
 
     for (int i = 1; i < argc; i++)
     {
@@ -74,6 +102,35 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
 
         if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0)
             return CLI_RESULT_VERSION;
+
+        if (strcmp(arg, "-a") == 0 || strcmp(arg, "--alarm") == 0)
+        {
+            if (seen_alarm)
+            {
+                fprintf(stderr, "E: option '%s' was specified more than once\n", arg);
+                return CLI_RESULT_ERROR;
+            }
+
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "E: option '%s' requires a value\n", arg);
+                print_usage(stderr);
+                return CLI_RESULT_ERROR;
+            }
+
+            if (!vext_alarm_is_valid(argv[i + 1]))
+            {
+                fprintf(stderr, "E: unknown alarm '%s' (available: ", argv[i + 1]);
+                vext_alarm_print_names(stderr);
+                fprintf(stderr, ")\n");
+                return CLI_RESULT_ERROR;
+            }
+
+            timer_config->alarm = argv[i + 1];
+            seen_alarm = 1;
+            i++;
+            continue;
+        }
 
         if (strcmp(arg, "-s") == 0 || strcmp(arg, "--sessions") == 0)
         {
@@ -116,7 +173,7 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
             return CLI_RESULT_ERROR;
         }
 
-        if (!parse_value(argv[i + 1], max, value))
+        if (!cli_parse_value(argv[i + 1], max, value))
         {
             fprintf(stderr, "E: invalid %s '%s' (expected an integer from 1 to %u)\n",
                     label, argv[i + 1], max);

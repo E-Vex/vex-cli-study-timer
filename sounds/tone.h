@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <math.h>
 
+extern int stop_playback;
+
 int vext_audio_available(void);
 int vext_audio_start(void);
 

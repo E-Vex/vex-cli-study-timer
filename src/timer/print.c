@@ -82,6 +82,11 @@ void display_banner(void)
     printf("\n");
 }
 
+void display_controls(void)
+{
+    printf(DIM "Controls: [Space/P] pause  [S] skip  [Q] quit" RESET "\n");
+}
+
 void display_finish(const timer_config_t *timer_config)
 {
     char sessions_line[80];
@@ -136,19 +141,29 @@ static void print_progress_bar(unsigned int remaining_seconds, unsigned int tota
     printf(RESET "] %3u%%", percent);
 }
 
-void display_study_running(const timer_config_t *timer_config, unsigned int s, unsigned int m, unsigned int h,
-                           unsigned int remaining_seconds, unsigned int total_seconds)
+static void display_study_running(const timer_config_t *timer_config, unsigned int s, unsigned int m, unsigned int h,
+                                  unsigned int remaining_seconds, unsigned int total_seconds, int paused)
 {
-    printf("\r\033[2K" STUDY_COLOR BOLD "Study" RESET "  %02u:%02u:%02u | session %u/%u  ",
+    printf("\r\033[2K" STUDY_COLOR BOLD "Study" RESET "  %02u:%02u:%02u | session %u/%u",
            h, m, s, timer_config->ses, timer_config->session);
+
+    if (paused)
+        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+
+    printf("  ");
     print_progress_bar(remaining_seconds, total_seconds, STUDY_COLOR);
     fflush(stdout);
 }
 
-void display_break_running(unsigned int s, unsigned int m, unsigned int h,
-                           unsigned int remaining_seconds, unsigned int total_seconds)
+static void display_break_running(unsigned int s, unsigned int m, unsigned int h,
+                                  unsigned int remaining_seconds, unsigned int total_seconds, int paused)
 {
-    printf("\r\033[2K" BREAK_COLOR BOLD "Break" RESET "  %02u:%02u:%02u  ", h, m, s);
+    printf("\r\033[2K" BREAK_COLOR BOLD "Break" RESET "  %02u:%02u:%02u", h, m, s);
+
+    if (paused)
+        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+
+    printf("  ");
     print_progress_bar(remaining_seconds, total_seconds, BREAK_COLOR);
     fflush(stdout);
 }
@@ -174,7 +189,7 @@ void vext_printer(const timer_config_t *timer_config)
     if (timer_config->validator_status == VEXT_STATUS_BREAK_PHASE)
     {
         total_seconds = timer_config->break_time * 60;
-        display_break_running(s, m, h, remaining_seconds, total_seconds);
+        display_break_running(s, m, h, remaining_seconds, total_seconds, timer_config->paused);
     }
     else if (timer_config->validator_status == VEXT_STATUS_FINISH)
     {
@@ -185,7 +200,7 @@ void vext_printer(const timer_config_t *timer_config)
     else
     {
         total_seconds = timer_config->session_time * 60;
-        display_study_running(timer_config, s, m, h, remaining_seconds, total_seconds);
+        display_study_running(timer_config, s, m, h, remaining_seconds, total_seconds, timer_config->paused);
     }
 }
 /*-----------------------------------------------------------------------------------------------------------------------------*/

@@ -2,6 +2,7 @@
 
 #include "timer/timer.h"
 #include "cli/cli.h"
+#include "input/input.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,7 +20,21 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
 
     case CLI_RESULT_OK:
-        return vext_controller(&timer_config);
+    {
+        int result;
+
+        vext_input_init();
+        result = vext_controller(&timer_config);
+        vext_input_restore();
+
+        if (vext_input_interrupted())
+        {
+            int signal_number = vext_input_interrupt_signal();
+            return signal_number > 0 ? 128 + signal_number : VEXT_EXIT_INTERRUPTED;
+        }
+
+        return result;
+    }
 
     case CLI_RESULT_ERROR:
     default:

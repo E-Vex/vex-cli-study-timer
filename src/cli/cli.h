@@ -15,6 +15,7 @@ typedef enum
 
 void print_usage(FILE *stream);
 void print_version(void);
+int cli_parse_value(const char *text, uint32_t max, uint32_t *out);
 cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_config);
 
 #endif
