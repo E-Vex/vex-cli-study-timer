@@ -24,6 +24,11 @@ static const alarm_entry_t g_alarms[] = {
     {"imperial", play_imperial_march},
     {"addictive", play_addictive_melody},
     {"beep", play_some_beep},
+    {"hard-to-say-goodbye", play_hard_to_say_goodbye},
+    {"cinematic", play_cinematic_ambient},
+    {"garden-guardian", play_garden_guardian},
+    {"final-showdown", play_final_showdown},
+    {"victory", play_victory_fanfare},
 };
 
 #define ALARM_COUNT (sizeof(g_alarms) / sizeof(g_alarms[0]))
