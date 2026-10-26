@@ -61,9 +61,9 @@ static void print_box_centered(const char *text)
 
 void display_info(const timer_config_t *timer_config)
 {
-    unsigned long focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
+    unsigned long focus_minutes = (unsigned long)timer_config->session * timer_config->session_time;
     unsigned long break_minutes = timer_config->session > 0
-                                     ? (unsigned int)(timer_config->session - 1) * timer_config->break_time
+                                     ? (unsigned long)(timer_config->session - 1) * timer_config->break_time
                                      : 0;
     unsigned long total_minutes = focus_minutes + break_minutes;
 
@@ -95,9 +95,9 @@ void display_finish(const timer_config_t *timer_config)
     char focus_line[80];
     char break_line[80];
     char total_line[80];
-    unsigned long focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
+    unsigned long focus_minutes = (unsigned long)timer_config->session * timer_config->session_time;
     unsigned long break_minutes = timer_config->session > 0
-                                     ? (unsigned int)(timer_config->session - 1) * timer_config->break_time
+                                     ? (unsigned long)(timer_config->session - 1) * timer_config->break_time
                                      : 0;
     unsigned long total_minutes = focus_minutes + break_minutes;
 
