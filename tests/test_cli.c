@@ -159,6 +159,11 @@ static void test_alarm_names(void)
     CHECK(vext_alarm_is_valid("imperial"));
     CHECK(vext_alarm_is_valid("addictive"));
     CHECK(vext_alarm_is_valid("beep"));
+    CHECK(vext_alarm_is_valid("hard-to-say-goodbye"));
+    CHECK(vext_alarm_is_valid("cinematic"));
+    CHECK(vext_alarm_is_valid("garden-guardian"));
+    CHECK(vext_alarm_is_valid("final-showdown"));
+    CHECK(vext_alarm_is_valid("victory"));
     CHECK(vext_alarm_is_valid("none"));
 
     CHECK(!vext_alarm_is_valid("bogus"));
