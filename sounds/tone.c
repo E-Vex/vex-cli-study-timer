@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "../src/input/input.h"
+#include "tone.h"
 
 #define SAMPLE_RATE 44100
 #define PI 3.14159265358979323846
@@ -676,41 +677,7 @@ void play_hard_to_say_goodbye()
 }
 void play_finish_music()
 {
-    stop_playback = 0;
-
-    if (!vext_audio_start())
-        return;
-
-    float C3 = 130.81, F3 = 174.61, G3 = 196.00, A3 = 220.00;
-    float B3 = 246.94, C4 = 261.63, D4 = 293.66, E4 = 329.63;
-    float G4 = 392.00;
-
-    for (int i = 0; i < 2; i++)
-    {
-        if (stop_playback)
-            break;
-
-        play_triad(A3, C4, E4, 0.8);
-        play_triad(F3, A3, C4, 0.8);
-        play_triad(C4, E4, G4, 0.8);
-        play_triad(G3, B3, D4, 0.8);
-    }
-
-    play_triad(A3, C4, E4, 0.4);
-    play_triad(A3, C4, E4, 0.4);
-
-    play_triad(F3, A3, C4, 0.4);
-    play_triad(F3, A3, C4, 0.4);
-
-    play_triad(C4, E4, G4, 0.4);
-    play_triad(C4, E4, G4, 0.4);
-
-    play_triad(G3, B3, D4, 0.4);
-    play_triad(G3, B3, D4, 0.4);
-
-    play_triad(C3, E4, G4, 2.5);
-
-    close_audio_pipe();
+    play_victory_fanfare();
 }
 void play_cinematic_ambient()
 {
