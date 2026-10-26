@@ -5,14 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-# Changelog
-
-All notable changes to this project are documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/).
-
-## [Unreleased]
+## [1.2.0] - 2026-10-26
 
 ### Added
 
@@ -51,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Pause/resume preserves sub-second time instead of rounding it away.
 - Strict integer parsing now rejects leading signs and whitespace.
 
+[1.2.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.2.0
 [1.1.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.1.0
 
 ## [1.0.0] - 2026-10-21
