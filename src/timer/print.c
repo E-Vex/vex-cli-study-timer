@@ -59,16 +59,16 @@ static void print_box_centered(const char *text)
 
 void display_info(const timer_config_t *timer_config)
 {
-    unsigned int focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
-    unsigned int break_minutes = timer_config->session > 0
+    unsigned long focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
+    unsigned long break_minutes = timer_config->session > 0
                                      ? (unsigned int)(timer_config->session - 1) * timer_config->break_time
                                      : 0;
-    unsigned int total_minutes = focus_minutes + break_minutes;
+    unsigned long total_minutes = focus_minutes + break_minutes;
 
     printf("Sessions:  %u\n", timer_config->session);
     printf("Study   :  %u minutes\n", timer_config->session_time);
     printf("Break   :  %u minutes\n", timer_config->break_time);
-    printf("Total   :  %u minutes\n\n", total_minutes);
+    printf("Total   :  %lu minutes\n\n", total_minutes);
 }
 
 void display_banner(void)
@@ -93,16 +93,16 @@ void display_finish(const timer_config_t *timer_config)
     char focus_line[80];
     char break_line[80];
     char total_line[80];
-    unsigned int focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
-    unsigned int break_minutes = timer_config->session > 0
+    unsigned long focus_minutes = (unsigned int)timer_config->session * timer_config->session_time;
+    unsigned long break_minutes = timer_config->session > 0
                                      ? (unsigned int)(timer_config->session - 1) * timer_config->break_time
                                      : 0;
-    unsigned int total_minutes = focus_minutes + break_minutes;
+    unsigned long total_minutes = focus_minutes + break_minutes;
 
     snprintf(sessions_line, sizeof(sessions_line), "   Sessions completed :  %u", timer_config->session);
-    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %u minutes", focus_minutes);
-    snprintf(break_line, sizeof(break_line), "   Break time         :  %u minutes", break_minutes);
-    snprintf(total_line, sizeof(total_line), "   Total time         :  %u minutes", total_minutes);
+    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %lu minutes", focus_minutes);
+    snprintf(break_line, sizeof(break_line), "   Break time         :  %lu minutes", break_minutes);
+    snprintf(total_line, sizeof(total_line), "   Total time         :  %lu minutes", total_minutes);
 
     printf("\n" FINISH_COLOR BOLD);
     print_box_border("╔", "╗");
