@@ -119,6 +119,11 @@ the final session.
 | `imperial` | Imperial March |
 | `addictive` | Looping melodic hook |
 | `beep` | Short three-note beep |
+| `hard-to-say-goodbye` | Slower emotional melody |
+| `cinematic` | Ambient cinematic track |
+| `garden-guardian` | Gentle garden theme |
+| `final-showdown` | Epic showdown theme |
+| `victory` | Victory fanfare |
 | `none` | Silent; also skips the finish fanfare |
 
 In an interactive terminal, phase alarms repeat until a key is pressed. If
