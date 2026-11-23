@@ -43,6 +43,45 @@ static int g_audio_checked = 0;
 static int g_audio_available = 0;
 static int g_atexit_registered = 0;
 
+/* --- SAMPLE BUFFERING --- */
+
+/*
+ * Writing two bytes per fwrite call costs one locked stdio call per sample
+ * (44,100 times per second). Notes are instead accumulated here and pushed
+ * to the pipe in chunks; the byte stream is identical either way.
+ */
+#define AUDIO_BUFFER_SAMPLES 4096
+
+static int16_t g_sample_buffer[AUDIO_BUFFER_SAMPLES];
+static size_t g_sample_buffer_len = 0;
+
+static int flush_samples(FILE *pipe)
+{
+    if (g_sample_buffer_len == 0)
+        return 1;
+
+    if (fwrite(g_sample_buffer, sizeof(g_sample_buffer[0]), g_sample_buffer_len,
+               pipe) != g_sample_buffer_len)
+    {
+        stop_playback = 1;
+        g_sample_buffer_len = 0;
+        return 0;
+    }
+
+    g_sample_buffer_len = 0;
+    return 1;
+}
+
+static int write_sample(int16_t sample, FILE *pipe)
+{
+    g_sample_buffer[g_sample_buffer_len++] = sample;
+
+    if (g_sample_buffer_len == AUDIO_BUFFER_SAMPLES)
+        return flush_samples(pipe);
+
+    return 1;
+}
+
 /* --- AUDIO PIPE MANAGEMENT --- */
 
 static void close_audio_pipe(void)
@@ -116,71 +155,85 @@ static int stop_requested(void)
 
 static void play_beep(float frequency, float duration_sec)
 {
+    FILE *pipe;
+    int samples;
+    int i;
+
     if (stop_requested())
         return;
 
-    FILE *pipe = get_audio_pipe();
+    pipe = get_audio_pipe();
     if (!pipe)
     {
         stop_playback = 1;
         return;
     }
 
-    int samples = SAMPLE_RATE * duration_sec;
+    samples = SAMPLE_RATE * duration_sec;
 
-    for (int i = 0; i < samples; i++)
+    for (i = 0; i < samples; i++)
     {
+        double t;
+        int16_t sample;
+
         if ((i & 0x0FFF) == 0 && stop_requested())
             return;
 
-        double t = (double)i / SAMPLE_RATE;
-        int16_t sample = (int16_t)(32767 * sin(2 * PI * frequency * t));
+        t = (double)i / SAMPLE_RATE;
+        sample = (int16_t)(32767 * sin(2 * PI * frequency * t));
 
-        if (fwrite(&sample, sizeof(sample), 1, pipe) != 1)
-        {
-            stop_playback = 1;
+        if (!write_sample(sample, pipe))
             return;
-        }
     }
 
+    flush_samples(pipe);
     fflush(pipe);
 }
 
 static void play_triad(float freq1, float freq2, float freq3, float duration_sec)
 {
+    FILE *pipe;
+    int samples;
+    int i;
+
     if (stop_requested())
         return;
 
-    FILE *pipe = get_audio_pipe();
+    pipe = get_audio_pipe();
     if (!pipe)
     {
         stop_playback = 1;
         return;
     }
 
-    int samples = SAMPLE_RATE * duration_sec;
+    samples = SAMPLE_RATE * duration_sec;
 
-    for (int i = 0; i < samples; i++)
+    for (i = 0; i < samples; i++)
     {
+        double t;
+        double wave1;
+        double wave2;
+        double wave3;
+        double mixed_wave;
+        int16_t sample;
+
         if ((i & 0x0FFF) == 0 && stop_requested())
             return;
 
-        double t = (double)i / SAMPLE_RATE;
+        t = (double)i / SAMPLE_RATE;
 
-        double wave1 = sin(2 * PI * freq1 * t);
-        double wave2 = sin(2 * PI * freq2 * t);
-        double wave3 = sin(2 * PI * freq3 * t);
+        wave1 = sin(2 * PI * freq1 * t);
+        wave2 = sin(2 * PI * freq2 * t);
+        wave3 = sin(2 * PI * freq3 * t);
 
-        double mixed_wave = (wave1 + wave2 + wave3) / 3.0;
-        int16_t sample = (int16_t)(32767 * mixed_wave);
+        mixed_wave = (wave1 + wave2 + wave3) / 3.0;
+        sample = (int16_t)(32767 * mixed_wave);
 
-        if (fwrite(&sample, sizeof(sample), 1, pipe) != 1)
-        {
-            stop_playback = 1;
+        if (!write_sample(sample, pipe))
             return;
-        }
     }
 
+    flush_samples(pipe);
     fflush(pipe);
 }
 
