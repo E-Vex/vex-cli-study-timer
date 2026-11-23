@@ -73,6 +73,9 @@ static void test_parse_value(void)
     CHECK(cli_parse_value("1 ", 255, &value) == 0);
     CHECK(cli_parse_value("1x", 255, &value) == 0);
     CHECK(cli_parse_value("abc", 255, &value) == 0);
+    CHECK(cli_parse_value("1.5", 255, &value) == 0);
+    CHECK(cli_parse_value("1e3", 255, &value) == 0);
+    CHECK(cli_parse_value("0x10", 255, &value) == 0);
     CHECK(cli_parse_value("999999999999999999999", 255, &value) == 0);
     CHECK(value == 0);
 }
@@ -112,12 +115,16 @@ static void test_information_options(void)
     char *help_long[] = {"vex-timer", "--help"};
     char *version_short[] = {"vex-timer", "-v"};
     char *version_long[] = {"vex-timer", "--version"};
+    char *help_after_options[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-h"};
     timer_config_t config = {0};
 
     CHECK(parse_timer_args(ARGC(help_short), help_short, &config) == CLI_RESULT_HELP);
     CHECK(parse_timer_args(ARGC(help_long), help_long, &config) == CLI_RESULT_HELP);
     CHECK(parse_timer_args(ARGC(version_short), version_short, &config) == CLI_RESULT_VERSION);
     CHECK(parse_timer_args(ARGC(version_long), version_long, &config) == CLI_RESULT_VERSION);
+
+    /* Help still wins when it appears after other options. */
+    CHECK(parse_timer_args(ARGC(help_after_options), help_after_options, &config) == CLI_RESULT_HELP);
 }
 
 static void test_invalid_options(void)
@@ -223,8 +230,11 @@ static void test_long_break_options(void)
     char *lb_every[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-r", "2"};
     char *lb_inline[] = {"vex-timer", "--sessions=8", "--focus=25", "--break=5",
                          "--long-break=30", "--long-break-every=4"};
+    char *lb_reorder[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-r", "2", "-l", "15"};
     char *lb_disabled[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5"};
     char *lb_r_only[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-r", "4"};
+    char *lb_r_only_inline[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5",
+                                "--long-break-every=4"};
     char *lb_zero[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "0"};
     char *lb_over[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "256"};
     char *lb_dup[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-l", "20"};
@@ -248,11 +258,18 @@ static void test_long_break_options(void)
     CHECK(config.long_break_time == 30);
     CHECK(config.long_break_every == 4);
 
+    /* -r before -l is accepted; only the pair matters, not the order. */
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(lb_reorder), lb_reorder, &config) == CLI_RESULT_OK);
+    CHECK(config.long_break_time == 15);
+    CHECK(config.long_break_every == 2);
+
     memset(&config, 0, sizeof(config));
     CHECK(parse_timer_args(ARGC(lb_disabled), lb_disabled, &config) == CLI_RESULT_OK);
     CHECK(config.long_break_time == 0);
 
     CHECK(parse_quiet(ARGC(lb_r_only), lb_r_only, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_r_only_inline), lb_r_only_inline, &config) == CLI_RESULT_ERROR);
     CHECK(parse_quiet(ARGC(lb_zero), lb_zero, &config) == CLI_RESULT_ERROR);
     CHECK(parse_quiet(ARGC(lb_over), lb_over, &config) == CLI_RESULT_ERROR);
     CHECK(parse_quiet(ARGC(lb_dup), lb_dup, &config) == CLI_RESULT_ERROR);

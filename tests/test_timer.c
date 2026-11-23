@@ -172,11 +172,70 @@ static void test_plan_summary(void)
     vext_plan_summary(NULL, &summary); /* must not crash */
 }
 
+static void test_counter_pause(void)
+{
+    timer_config_t config = make_config();
+
+    /* Paused with time left: reports the frozen remaining time and keeps running. */
+    config.paused = 1;
+    config.paused_remaining_ns = 5ULL * 60 * VEXT_NS_PER_SECOND;
+    CHECK(vext_counter_v2(&config) == VEXT_COUNTER_RUNNING);
+    CHECK(config.paused == 1);
+    CHECK(config.min == 5);
+    CHECK(config.sec == 0);
+
+    /* Sub-second leftovers round up, like the running countdown. */
+    config.paused_remaining_ns = 61 * VEXT_NS_PER_SECOND / 2; /* 30.5 s */
+    CHECK(vext_counter_v2(&config) == VEXT_COUNTER_RUNNING);
+    CHECK(config.min == 0);
+    CHECK(config.sec == 31);
+
+    /* A paused phase with nothing left is done, and the flag is cleared. */
+    config.paused_remaining_ns = 0;
+    CHECK(vext_counter_v2(&config) == VEXT_COUNTER_DONE);
+    CHECK(config.paused == 0);
+    CHECK(config.min == 0);
+    CHECK(config.sec == 0);
+}
+
+static void test_plan_summary_edges(void)
+{
+    timer_config_t config = make_config();
+    vext_plan_summary_t summary;
+
+    /* A single session has no breaks at all. */
+    config.session = 1;
+    vext_plan_summary(&config, &summary);
+    CHECK(summary.focus_minutes == 25);
+    CHECK(summary.break_minutes == 0);
+    CHECK(summary.long_break_minutes == 0);
+    CHECK(summary.total_minutes == 25);
+
+    /* Cadence longer than the run: every break stays short. */
+    config.session = 4;
+    config.long_break_time = 15;
+    config.long_break_every = 5;
+    vext_plan_summary(&config, &summary);
+    CHECK(summary.focus_minutes == 100);
+    CHECK(summary.break_minutes == 15);
+    CHECK(summary.long_break_minutes == 0);
+    CHECK(summary.total_minutes == 115);
+
+    /* Cadence of 1: every break is a long break. */
+    config.long_break_every = 1;
+    vext_plan_summary(&config, &summary);
+    CHECK(summary.break_minutes == 0);
+    CHECK(summary.long_break_minutes == 45);
+    CHECK(summary.total_minutes == 145);
+}
+
 void test_timer(void)
 {
     test_input_validator();
     test_session_validator();
     test_counter_deadline();
+    test_counter_pause();
     test_is_long_break();
     test_plan_summary();
+    test_plan_summary_edges();
 }
