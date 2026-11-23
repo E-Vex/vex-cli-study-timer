@@ -217,6 +217,51 @@ static void test_inline_value_options(void)
     CHECK(parse_quiet(ARGC(short_eq), short_eq, &config) == CLI_RESULT_ERROR);
 }
 
+static void test_long_break_options(void)
+{
+    char *lb_default[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15"};
+    char *lb_every[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-r", "2"};
+    char *lb_inline[] = {"vex-timer", "--sessions=8", "--focus=25", "--break=5",
+                         "--long-break=30", "--long-break-every=4"};
+    char *lb_disabled[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5"};
+    char *lb_r_only[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-r", "4"};
+    char *lb_zero[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "0"};
+    char *lb_over[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "256"};
+    char *lb_dup[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-l", "20"};
+    char *lb_every_zero[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-r", "0"};
+    char *lb_every_over[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l", "15", "-r", "256"};
+    char *lb_missing_value[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "-l"};
+    char *lb_empty_inline[] = {"vex-timer", "-s", "4", "-t", "25", "-b", "5", "--long-break="};
+    timer_config_t config = {0};
+
+    CHECK(parse_timer_args(ARGC(lb_default), lb_default, &config) == CLI_RESULT_OK);
+    CHECK(config.long_break_time == 15);
+    CHECK(config.long_break_every == VEXT_DEFAULT_LONG_BREAK_EVERY);
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(lb_every), lb_every, &config) == CLI_RESULT_OK);
+    CHECK(config.long_break_time == 15);
+    CHECK(config.long_break_every == 2);
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(lb_inline), lb_inline, &config) == CLI_RESULT_OK);
+    CHECK(config.long_break_time == 30);
+    CHECK(config.long_break_every == 4);
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(lb_disabled), lb_disabled, &config) == CLI_RESULT_OK);
+    CHECK(config.long_break_time == 0);
+
+    CHECK(parse_quiet(ARGC(lb_r_only), lb_r_only, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_zero), lb_zero, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_over), lb_over, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_dup), lb_dup, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_every_zero), lb_every_zero, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_every_over), lb_every_over, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_missing_value), lb_missing_value, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(lb_empty_inline), lb_empty_inline, &config) == CLI_RESULT_ERROR);
+}
+
 void test_cli(void)
 {
     test_parse_value();
@@ -224,5 +269,6 @@ void test_cli(void)
     test_information_options();
     test_invalid_options();
     test_inline_value_options();
+    test_long_break_options();
     test_alarm_names();
 }

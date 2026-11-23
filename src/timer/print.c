@@ -11,10 +11,12 @@
 #define BRIGHT_YELLOW "\033[93m"
 #define BRIGHT_GREEN "\033[92m"
 #define BRIGHT_CYAN "\033[96m"
+#define BRIGHT_MAGENTA "\033[95m"
 #define RESET "\033[0m"
 
 #define STUDY_COLOR BRIGHT_GREEN
 #define BREAK_COLOR BRIGHT_CYAN
+#define LONG_BREAK_COLOR BRIGHT_MAGENTA
 #define FINISH_COLOR BRIGHT_YELLOW
 
 #define LOGO_LINE(txt) BRIGHT_YELLOW BOLD txt RESET "\n"
@@ -61,16 +63,21 @@ static void print_box_centered(const char *text)
 
 void display_info(const timer_config_t *timer_config)
 {
-    unsigned long focus_minutes = (unsigned long)timer_config->session * timer_config->session_time;
-    unsigned long break_minutes = timer_config->session > 0
-                                     ? (unsigned long)(timer_config->session - 1) * timer_config->break_time
-                                     : 0;
-    unsigned long total_minutes = focus_minutes + break_minutes;
+    vext_plan_summary_t summary;
+
+    vext_plan_summary(timer_config, &summary);
 
     printf("Sessions:  %u\n", timer_config->session);
     printf("Study   :  %u minutes\n", timer_config->session_time);
     printf("Break   :  %u minutes\n", timer_config->break_time);
-    printf("Total   :  %lu minutes\n\n", total_minutes);
+
+    if (timer_config->long_break_time > 0)
+        printf("Long    :  %u minutes every %u session%s\n",
+               timer_config->long_break_time,
+               timer_config->long_break_every,
+               timer_config->long_break_every == 1 ? "" : "s");
+
+    printf("Total   :  %lu minutes\n\n", summary.total_minutes);
 }
 
 void display_banner(void)
@@ -94,17 +101,18 @@ void display_finish(const timer_config_t *timer_config)
     char sessions_line[80];
     char focus_line[80];
     char break_line[80];
+    char long_break_line[80];
     char total_line[80];
-    unsigned long focus_minutes = (unsigned long)timer_config->session * timer_config->session_time;
-    unsigned long break_minutes = timer_config->session > 0
-                                     ? (unsigned long)(timer_config->session - 1) * timer_config->break_time
-                                     : 0;
-    unsigned long total_minutes = focus_minutes + break_minutes;
+    vext_plan_summary_t summary;
+
+    vext_plan_summary(timer_config, &summary);
 
     snprintf(sessions_line, sizeof(sessions_line), "   Sessions completed :  %u", timer_config->session);
-    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %lu minutes", focus_minutes);
-    snprintf(break_line, sizeof(break_line), "   Break time         :  %lu minutes", break_minutes);
-    snprintf(total_line, sizeof(total_line), "   Total time         :  %lu minutes", total_minutes);
+    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %lu minutes", summary.focus_minutes);
+    snprintf(break_line, sizeof(break_line), "   Break time         :  %lu minutes", summary.break_minutes);
+    snprintf(long_break_line, sizeof(long_break_line), "   Long break time    :  %lu minutes",
+             summary.long_break_minutes);
+    snprintf(total_line, sizeof(total_line), "   Total time         :  %lu minutes", summary.total_minutes);
 
     printf("\n" FINISH_COLOR BOLD);
     print_box_border("╔", "╗");
@@ -114,6 +122,10 @@ void display_finish(const timer_config_t *timer_config)
     print_box_line(sessions_line);
     print_box_line(focus_line);
     print_box_line(break_line);
+
+    if (timer_config->long_break_time > 0)
+        print_box_line(long_break_line);
+
     print_box_line(total_line);
     print_box_line("");
     print_box_border("╚", "╝");
@@ -170,6 +182,19 @@ static void display_break_running(unsigned int s, unsigned int m, unsigned int h
     fflush(stdout);
 }
 
+static void display_long_break_running(unsigned int s, unsigned int m, unsigned int h,
+                                       unsigned int remaining_seconds, unsigned int total_seconds, int paused)
+{
+    printf("\r\033[2K" LONG_BREAK_COLOR BOLD "Long break" RESET "  %02u:%02u:%02u", h, m, s);
+
+    if (paused)
+        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+
+    printf("  ");
+    print_progress_bar(remaining_seconds, total_seconds, LONG_BREAK_COLOR);
+    fflush(stdout);
+}
+
 void vext_printer(const timer_config_t *timer_config)
 {
     unsigned int s;
@@ -192,6 +217,11 @@ void vext_printer(const timer_config_t *timer_config)
     {
         total_seconds = timer_config->break_time * 60;
         display_break_running(s, m, h, remaining_seconds, total_seconds, timer_config->paused);
+    }
+    else if (timer_config->validator_status == VEXT_STATUS_LONG_BREAK)
+    {
+        total_seconds = timer_config->long_break_time * 60;
+        display_long_break_running(s, m, h, remaining_seconds, total_seconds, timer_config->paused);
     }
     else if (timer_config->validator_status == VEXT_STATUS_FINISH)
     {

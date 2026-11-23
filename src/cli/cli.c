@@ -51,6 +51,10 @@ void print_usage(FILE *stream)
             "  -s, --sessions N   number of study sessions (1-%u, required)\n"
             "  -t, --focus N      study duration in minutes (1-%u, required)\n"
             "  -b, --break N      break duration in minutes (1-%u, required)\n"
+            "  -l, --long-break N long break duration in minutes (1-%u, optional)\n"
+            "  -r, --long-break-every N\n"
+            "                     take a long break after every N sessions\n"
+            "                     (1-%u, default %u, requires -l)\n"
             "  -a, --alarm NAME   alarm sound (default: %s)\n"
             "  -h, --help         show this help message\n"
             "  -v, --version      show version information\n"
@@ -59,7 +63,8 @@ void print_usage(FILE *stream)
             "\n"
             "Alarm sounds:\n"
             "  ",
-            VEXT_MAX_SESSIONS, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES, VEXT_DEFAULT_ALARM);
+            VEXT_MAX_SESSIONS, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES,
+            VEXT_MAX_SESSIONS, VEXT_DEFAULT_LONG_BREAK_EVERY, VEXT_DEFAULT_ALARM);
 
     vext_alarm_print_names(stream);
 
@@ -74,7 +79,8 @@ void print_usage(FILE *stream)
             "  Ctrl+C   quit\n"
             "\n"
             "Example:\n"
-            "  vex-timer -s 4 -t 25 -b 5 -a tetris\n");
+            "  vex-timer -s 4 -t 25 -b 5 -a tetris\n"
+            "  vex-timer -s 8 -t 25 -b 5 -l 30 -r 4\n");
 }
 
 void print_version(void)
@@ -117,8 +123,12 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
     int seen_focus = 0;
     int seen_break = 0;
     int seen_alarm = 0;
+    int seen_long_break = 0;
+    int seen_long_break_every = 0;
 
     timer_config->alarm = VEXT_DEFAULT_ALARM;
+    timer_config->long_break_time = 0;
+    timer_config->long_break_every = VEXT_DEFAULT_LONG_BREAK_EVERY;
 
     for (int i = 1; i < argc; i++)
     {
@@ -211,6 +221,20 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
             max = VEXT_MAX_MINUTES;
             label = "break duration";
         }
+        else if (strcmp(arg, "-l") == 0 || match_long_option(arg, "--long-break", &inline_value))
+        {
+            value = &timer_config->long_break_time;
+            seen = &seen_long_break;
+            max = VEXT_MAX_MINUTES;
+            label = "long break duration";
+        }
+        else if (strcmp(arg, "-r") == 0 || match_long_option(arg, "--long-break-every", &inline_value))
+        {
+            value = &timer_config->long_break_every;
+            seen = &seen_long_break_every;
+            max = VEXT_MAX_SESSIONS;
+            label = "long break interval";
+        }
         else
         {
             fprintf(stderr, "E: unknown option '%s'\n", arg);
@@ -251,6 +275,12 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
             if (inline_value == NULL)
                 i++;
         }
+    }
+
+    if (seen_long_break_every && !seen_long_break)
+    {
+        fprintf(stderr, "E: -r/--long-break-every requires -l/--long-break\n");
+        return CLI_RESULT_ERROR;
     }
 
     if (!seen_sessions || !seen_focus || !seen_break)
