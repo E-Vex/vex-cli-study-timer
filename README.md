@@ -57,6 +57,10 @@ make
 
 Run `make clean` to remove build artifacts, or `make rebuild` to start fresh.
 
+Install the binary onto your `PATH` with `make install` (defaults to
+`/usr/local/bin`; override with `PREFIX=...`, or `DESTDIR=...` for staged
+packaging). `make uninstall` removes it again.
+
 You can also compile manually:
 
 ```bash
@@ -242,8 +246,10 @@ make test
 ```
 
 The test suite covers strict integer parsing, option validation, alarm-name
-validation, timer range checks, and the phase-deadline completion path. CI runs
-the same tests on Ubuntu with GCC and Clang and on macOS with Clang.
+validation, timer range checks, the phase-deadline completion path, and the
+pause bookkeeping. CI runs the same tests on Ubuntu with GCC and Clang and
+on macOS with Clang, plus an AddressSanitizer and UndefinedBehaviorSanitizer
+build on Ubuntu.
 
 ## Exit Codes
 

@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-11-24
+
+### Fixed
+
+- The finish fanfare no longer plays through `aplay` when stdin is not a
+  terminal or no audio player is installed. Unattended runs now hear a
+  single bell, matching the phase alarms and the documented fallback.
+- The audio-unavailable prompt now accepts any key, matching the
+  documented "any key stops a ringing alarm" behavior. Previously only
+  Enter or Q dismissed it.
+- While paused, the key poll now waits a steady 200 ms instead of
+  shrinking the wait to the remaining phase time, which could busy-poll
+  when very little time was left.
+
+### Changed
+
+- Singular durations now read "1 minute" instead of "1 minutes" in the
+  header and the finish summary.
+
+### Added
+
+- `make install` and `make uninstall` targets with `PREFIX` and `DESTDIR`
+  support for staged packaging.
+- CI now also builds and runs the test suite with AddressSanitizer and
+  UndefinedBehaviorSanitizer.
+- More unit tests: counter pause paths, plan-summary edge cases, and
+  stricter value-parsing variants.
+
+### Performance
+
+- Alarm samples are written to `aplay` in 8 KB chunks instead of one
+  `fwrite` call per sample (44,100 calls per second previously). The
+  synthesized byte stream is unchanged; output was verified byte-for-byte
+  identical before and after.
+
 ## [1.3.0] - 2026-11-23
 
 ### Added
@@ -61,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Pause/resume preserves sub-second time instead of rounding it away.
 - Strict integer parsing now rejects leading signs and whitespace.
 
+[1.3.1]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.3.1
 [1.3.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.3.0
 [1.2.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.2.0
 [1.1.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.1.0
