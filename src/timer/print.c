@@ -61,6 +61,11 @@ static void print_box_centered(const char *text)
     printf("║%*s%s%*s║\n", left, "", text, right, "");
 }
 
+static const char *minutes_word(unsigned long minutes)
+{
+    return minutes == 1 ? "minute" : "minutes";
+}
+
 void display_info(const timer_config_t *timer_config)
 {
     vext_plan_summary_t summary;
@@ -68,16 +73,20 @@ void display_info(const timer_config_t *timer_config)
     vext_plan_summary(timer_config, &summary);
 
     printf("Sessions:  %u\n", timer_config->session);
-    printf("Study   :  %u minutes\n", timer_config->session_time);
-    printf("Break   :  %u minutes\n", timer_config->break_time);
+    printf("Study   :  %u %s\n", timer_config->session_time,
+           minutes_word(timer_config->session_time));
+    printf("Break   :  %u %s\n", timer_config->break_time,
+           minutes_word(timer_config->break_time));
 
     if (timer_config->long_break_time > 0)
-        printf("Long    :  %u minutes every %u session%s\n",
+        printf("Long    :  %u %s every %u session%s\n",
                timer_config->long_break_time,
+               minutes_word(timer_config->long_break_time),
                timer_config->long_break_every,
                timer_config->long_break_every == 1 ? "" : "s");
 
-    printf("Total   :  %lu minutes\n\n", summary.total_minutes);
+    printf("Total   :  %lu %s\n\n", summary.total_minutes,
+           minutes_word(summary.total_minutes));
 }
 
 void display_banner(void)
@@ -108,11 +117,14 @@ void display_finish(const timer_config_t *timer_config)
     vext_plan_summary(timer_config, &summary);
 
     snprintf(sessions_line, sizeof(sessions_line), "   Sessions completed :  %u", timer_config->session);
-    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %lu minutes", summary.focus_minutes);
-    snprintf(break_line, sizeof(break_line), "   Break time         :  %lu minutes", summary.break_minutes);
-    snprintf(long_break_line, sizeof(long_break_line), "   Long break time    :  %lu minutes",
-             summary.long_break_minutes);
-    snprintf(total_line, sizeof(total_line), "   Total time         :  %lu minutes", summary.total_minutes);
+    snprintf(focus_line, sizeof(focus_line), "   Focus time         :  %lu %s", summary.focus_minutes,
+             minutes_word(summary.focus_minutes));
+    snprintf(break_line, sizeof(break_line), "   Break time         :  %lu %s", summary.break_minutes,
+             minutes_word(summary.break_minutes));
+    snprintf(long_break_line, sizeof(long_break_line), "   Long break time    :  %lu %s",
+             summary.long_break_minutes, minutes_word(summary.long_break_minutes));
+    snprintf(total_line, sizeof(total_line), "   Total time         :  %lu %s", summary.total_minutes,
+             minutes_word(summary.total_minutes));
 
     printf("\n" FINISH_COLOR BOLD);
     print_box_border("╔", "╗");
