@@ -7,6 +7,7 @@ SRC = \
 src/main.c \
 src/cli/cli.c \
 src/input/input.c \
+src/notify/notify.c \
 src/timer/counter.c \
 src/timer/timer.c \
 src/timer/print.c \
@@ -18,6 +19,7 @@ LIB_SRC = $(filter-out src/main.c,$(SRC))
 TEST_SRC = \
 tests/test_main.c \
 tests/test_cli.c \
+tests/test_notify.c \
 tests/test_timer.c
 
 TARGET = vex-timer

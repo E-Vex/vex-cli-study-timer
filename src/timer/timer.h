@@ -38,6 +38,7 @@ typedef struct
     uint32_t long_break_time;  /* long break duration in minutes; 0 = disabled */
     uint32_t long_break_every; /* take a long break after this many sessions */
     const char *alarm;     /* selected alarm sound name */
+    uint8_t notify;        /* send desktop notifications at phase transitions */
 
     /*-------------------------------------------------------------------------------*/
     uint32_t sec;

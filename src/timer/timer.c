@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "../input/input.h"
+#include "../notify/notify.h"
 #include "alarm.h"
 #include "counter.h"
 #include "print.h"
@@ -151,6 +152,8 @@ int vext_controller(timer_config_t *timer_config)
     if (timer_config->alarm == NULL)
         timer_config->alarm = VEXT_DEFAULT_ALARM;
 
+    vext_notify_set_enabled(timer_config->notify != 0);
+
     timer_config->ses = 1;
     timer_config->paused = 0;
     timer_config->validator_status = VEXT_STATUS_VALID;
@@ -195,6 +198,13 @@ int vext_controller(timer_config_t *timer_config)
 
         if (study_status != VEXT_STATUS_SKIPPED)
         {
+            char body[128];
+
+            snprintf(body, sizeof(body), "Session %u of %u done. Time for a %sbreak.",
+                     completed_session, timer_config->session,
+                     long_break ? "long " : "");
+            vext_notify("Focus session complete", body);
+
             vext_alarm(timer_config->alarm);
             if (vext_input_interrupted() || vext_input_quit_requested())
                 return VEXT_EXIT_INTERRUPTED;
@@ -207,6 +217,12 @@ int vext_controller(timer_config_t *timer_config)
 
         if (break_status != VEXT_STATUS_SKIPPED)
         {
+            char body[128];
+
+            snprintf(body, sizeof(body), "Time to focus. Session %u of %u.",
+                     timer_config->ses, timer_config->session);
+            vext_notify("Break over", body);
+
             vext_alarm(timer_config->alarm);
             if (vext_input_interrupted() || vext_input_quit_requested())
                 return VEXT_EXIT_INTERRUPTED;
@@ -215,6 +231,16 @@ int vext_controller(timer_config_t *timer_config)
     }
 
     vext_printer(timer_config); /* Finish screen */
+
+    {
+        char body[128];
+        vext_plan_summary_t summary;
+
+        vext_plan_summary(timer_config, &summary);
+        snprintf(body, sizeof(body), "%u focus sessions, %lu minutes of focus time.",
+                 timer_config->session, summary.focus_minutes);
+        vext_notify("All sessions complete", body);
+    }
 
     if (!vext_alarm_is_none(timer_config->alarm))
     {

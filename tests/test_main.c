@@ -5,6 +5,7 @@
 int test_failures = 0;
 
 void test_cli(void);
+void test_notify(void);
 void test_timer(void);
 
 int main(void)
@@ -12,6 +13,7 @@ int main(void)
     printf("Running vex-timer tests...\n");
 
     test_cli();
+    test_notify();
     test_timer();
 
     if (test_failures != 0)

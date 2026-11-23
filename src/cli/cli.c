@@ -56,6 +56,7 @@ void print_usage(FILE *stream)
             "                     take a long break after every N sessions\n"
             "                     (1-%u, default %u, requires -l)\n"
             "  -a, --alarm NAME   alarm sound (default: %s)\n"
+            "      --no-notify    disable desktop notifications\n"
             "  -h, --help         show this help message\n"
             "  -v, --version      show version information\n"
             "\n"
@@ -125,10 +126,12 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
     int seen_alarm = 0;
     int seen_long_break = 0;
     int seen_long_break_every = 0;
+    int seen_no_notify = 0;
 
     timer_config->alarm = VEXT_DEFAULT_ALARM;
     timer_config->long_break_time = 0;
     timer_config->long_break_every = VEXT_DEFAULT_LONG_BREAK_EVERY;
+    timer_config->notify = 1;
 
     for (int i = 1; i < argc; i++)
     {
@@ -159,6 +162,25 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
             }
 
             return CLI_RESULT_VERSION;
+        }
+
+        if (match_long_option(arg, "--no-notify", &inline_value))
+        {
+            if (inline_value != NULL)
+            {
+                fprintf(stderr, "E: option '--no-notify' does not take a value\n");
+                return CLI_RESULT_ERROR;
+            }
+
+            if (seen_no_notify)
+            {
+                fprintf(stderr, "E: option '%s' was specified more than once\n", arg);
+                return CLI_RESULT_ERROR;
+            }
+
+            timer_config->notify = 0;
+            seen_no_notify = 1;
+            continue;
         }
 
         if (strcmp(arg, "-a") == 0 || match_long_option(arg, "--alarm", &inline_value))

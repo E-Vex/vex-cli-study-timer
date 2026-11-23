@@ -262,6 +262,26 @@ static void test_long_break_options(void)
     CHECK(parse_quiet(ARGC(lb_empty_inline), lb_empty_inline, &config) == CLI_RESULT_ERROR);
 }
 
+static void test_no_notify_option(void)
+{
+    char *default_args[] = {"vex-timer", "-s", "1", "-t", "25", "-b", "5"};
+    char *no_notify[] = {"vex-timer", "-s", "1", "-t", "25", "-b", "5", "--no-notify"};
+    char *no_notify_dup[] = {"vex-timer", "-s", "1", "-t", "25", "-b", "5",
+                             "--no-notify", "--no-notify"};
+    char *no_notify_value[] = {"vex-timer", "-s", "1", "-t", "25", "-b", "5", "--no-notify=1"};
+    timer_config_t config = {0};
+
+    CHECK(parse_timer_args(ARGC(default_args), default_args, &config) == CLI_RESULT_OK);
+    CHECK(config.notify == 1);
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(no_notify), no_notify, &config) == CLI_RESULT_OK);
+    CHECK(config.notify == 0);
+
+    CHECK(parse_quiet(ARGC(no_notify_dup), no_notify_dup, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(no_notify_value), no_notify_value, &config) == CLI_RESULT_ERROR);
+}
+
 void test_cli(void)
 {
     test_parse_value();
@@ -270,5 +290,6 @@ void test_cli(void)
     test_invalid_options();
     test_inline_value_options();
     test_long_break_options();
+    test_no_notify_option();
     test_alarm_names();
 }
