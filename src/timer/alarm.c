@@ -93,12 +93,12 @@ void vext_alarm(const char *name)
     if (!vext_audio_start())
     {
         printf("\a\nAlarm: audio playback is unavailable (install alsa-utils).\n");
-        printf("Press [ENTER] to continue...\n");
+        printf("Press any key to continue...\n");
 
         while (!vext_input_interrupted())
         {
             vext_key_t key = vext_input_poll(VEXT_INPUT_WAIT_FOREVER);
-            if (key == VEXT_KEY_ENTER || key == VEXT_KEY_QUIT)
+            if (key != VEXT_KEY_NONE)
                 break;
         }
 

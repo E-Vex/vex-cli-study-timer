@@ -675,8 +675,19 @@ void play_hard_to_say_goodbye()
 
     close_audio_pipe();
 }
-void play_finish_music()
+void play_finish_music(void)
 {
+    /*
+     * Without an interactive terminal the fanfare cannot be dismissed, so
+     * fall back to a single bell, exactly like the phase alarms. The same
+     * applies when no audio player is available.
+     */
+    if (!vext_input_is_interactive() || !vext_audio_start())
+    {
+        printf("\a\n");
+        return;
+    }
+
     play_victory_fanfare();
 }
 void play_cinematic_ambient()
