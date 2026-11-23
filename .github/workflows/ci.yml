@@ -47,3 +47,18 @@ jobs:
             echo "expected an unknown alarm to fail" >&2
             exit 1
           fi
+
+          if ./vex-timer -s 4 -t 25 -b 5 -r 4 >/dev/null 2>&1; then
+            echo "expected --long-break-every without --long-break to fail" >&2
+            exit 1
+          fi
+
+          if ./vex-timer --sessions=4 --focus=0 --break=5 >/dev/null 2>&1; then
+            echo "expected an invalid inline option value to fail" >&2
+            exit 1
+          fi
+
+          if ./vex-timer --help=1 >/dev/null 2>&1; then
+            echo "expected --help=1 to fail" >&2
+            exit 1
+          fi

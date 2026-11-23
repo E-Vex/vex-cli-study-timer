@@ -26,11 +26,14 @@ not make the countdown drift.
 ## Features
 
 - Configurable study sessions, focus duration, and break duration
+- Optional long breaks on a configurable cadence
 - Pause, resume, skip, and quit controls
 - Selectable chiptune alarms, with a silent option
+- Desktop notifications when `notify-send` is available
 - Live countdown, progress bar, and session counter
 - Drift-resistant monotonic timing
-- Strict CLI parsing with clear error messages and exit codes
+- Strict CLI parsing with clear error messages and exit codes, including the
+  `--name=value` form for long options
 - Terminal-bell fallback when `aplay` is unavailable or stdin is not a terminal
 - Unit tests (`make test`) and GitHub Actions CI
 
@@ -39,6 +42,7 @@ not make the countdown drift.
 - A POSIX system with a C11 compiler (Linux is the primary target)
 - GCC or Clang and `make`
 - `aplay` from `alsa-utils` for sound on Linux (optional)
+- `notify-send` for desktop notifications (optional)
 - A terminal that supports ANSI escape sequences for the live display and
   keyboard controls
 
@@ -73,11 +77,15 @@ gcc -Wall -Wextra -std=c11 -O2 -I. \
 | `-s` | `--sessions` | Number of study sessions | 1-255 |
 | `-t` | `--focus` | Focus duration in minutes | 1-255 |
 | `-b` | `--break` | Break duration in minutes | 1-255 |
+| `-l` | `--long-break` | Long break duration in minutes | 1-255 |
+| `-r` | `--long-break-every` | Long break after every N sessions (requires `-l`) | 1-255 |
 | `-a` | `--alarm` | Alarm sound (default: `megalovania`) | see below |
+| | `--no-notify` | Disable desktop notifications | - |
 | `-h` | `--help` | Show help and exit | - |
 | `-v` | `--version` | Show version and exit | - |
 
-`-s`, `-t`, and `-b` are required. Example configurations:
+`-s`, `-t`, and `-b` are required. Long options also accept the `--name=value`
+form, for example `--focus=25` or `--alarm=tetris`. Example configurations:
 
 ```bash
 # Four 25-minute focus sessions with 5-minute breaks
@@ -86,11 +94,17 @@ gcc -Wall -Wextra -std=c11 -O2 -I. \
 # Same schedule using long options
 ./vex-timer --sessions 4 --focus 25 --break 5
 
+# Classic Pomodoro: a 15-minute break after every fourth session
+./vex-timer -s 8 -t 25 -b 5 -l 15 -r 4
+
+# Same thing with the --name=value form
+./vex-timer --sessions=8 --focus=25 --break=5 --long-break=15
+
 # Use the Tetris theme for alarms
 ./vex-timer -s 4 -t 25 -b 5 -a tetris
 
-# A single 50-minute focus session with no sound
-./vex-timer -s 1 -t 50 -b 1 -a none
+# A single 50-minute focus session with no sound or notifications
+./vex-timer -s 1 -t 50 -b 1 -a none --no-notify
 ```
 
 For the first example, the timer shows:
@@ -103,7 +117,17 @@ Total   :  115 minutes
 ```
 
 `Total` counts the three breaks between the four sessions, not a break after
-the final session.
+the final session. Long breaks follow the same rule: one runs after every
+N-th session (N from `-r`, default 4), but never after the last session. With
+`-s 8 -t 25 -b 5 -l 15 -r 4` the header reads:
+
+```text
+Sessions:  8
+Study   :  25 minutes
+Break   :  5 minutes
+Long    :  15 minutes every 4 sessions
+Total   :  245 minutes
+```
 
 ## Alarm sounds
 
@@ -155,10 +179,13 @@ terminal bell.
    or a key press.
 5. Pausing freezes the remaining nanoseconds; resuming rebuilds the deadline
    from that value. Skipping returns control to the state machine immediately.
-6. `src/timer/timer.c` runs the study/break state machine until all sessions
-   are complete or the user quits.
+6. `src/timer/timer.c` runs the study/break state machine, swapping in a long
+   break on the configured cadence, until all sessions are complete or the
+   user quits.
 7. `sounds/tone.c` synthesizes the selected alarm samples and pipes them to
    `aplay`.
+8. `src/notify/notify.c` sends a desktop notification through `notify-send`
+   when a phase completes, if the helper is installed.
 
 ## Project Structure
 
@@ -181,6 +208,9 @@ vex-cli-study-timer/
 │   ├── input/
 │   │   ├── input.c
 │   │   └── input.h
+│   ├── notify/
+│   │   ├── notify.c
+│   │   └── notify.h
 │   └── timer/
 │       ├── alarm.c
 │       ├── alarm.h
@@ -196,6 +226,7 @@ vex-cli-study-timer/
 ├── tests/
 │   ├── test_cli.c
 │   ├── test_main.c
+│   ├── test_notify.c
 │   ├── test_timer.c
 │   └── test_util.h
 ├── CHANGELOG.md
@@ -227,9 +258,12 @@ the same tests on Ubuntu with GCC and Clang and on macOS with Clang.
 
 - The timer accepts whole minutes only.
 - Skipping a phase counts it as completed, so the finish summary always reports
-  the configured number of sessions.
+  the configured number of sessions. Skipped sessions still advance the
+  long-break cadence, and skipped phases do not trigger notifications.
+- Desktop notifications are sent at phase transitions when `notify-send` is
+  available. Use `--no-notify` to turn them off.
 - The timer core is portable POSIX code. Audio playback and the `aplay`
-  dependency are Linux-specific.
+  dependency are Linux-specific; notifications need `notify-send`.
 - The files under `src/timer/internals/` describe the original raw-syscall
   implementation and are kept as reference material.
 

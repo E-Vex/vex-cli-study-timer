@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-11-23
+
+### Added
+
+- Long break support: `-l`/`--long-break` schedules a longer break and
+  `-r`/`--long-break-every` sets the cadence (default 4, requires `-l`).
+  Long breaks run between sessions only, never after the final one, and the
+  header, live display, and finish summary all account for them.
+- Desktop notifications at phase transitions when `notify-send` is installed;
+  disable with `--no-notify`. Skipped phases do not notify.
+- `--name=value` syntax for long options, e.g. `--focus=25` or `--alarm=tetris`.
+
+### Changed
+
+- Total, focus, and break time are now computed by a shared, unit-tested
+  `vext_plan_summary()` helper used by both the header and the finish box.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
@@ -44,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Pause/resume preserves sub-second time instead of rounding it away.
 - Strict integer parsing now rejects leading signs and whitespace.
 
+[1.3.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.3.0
 [1.2.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.2.0
 [1.1.0]: https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v1.1.0
 
