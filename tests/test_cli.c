@@ -175,11 +175,54 @@ static void test_alarm_names(void)
     CHECK(!vext_alarm_is_none(NULL));
 }
 
+static void test_inline_value_options(void)
+{
+    char *eq_full[] = {"vex-timer", "--sessions=4", "--focus=25", "--break=5", "--alarm=tetris"};
+    char *eq_mixed[] = {"vex-timer", "-s", "4", "--focus=25", "-b", "5"};
+    char *eq_none[] = {"vex-timer", "--sessions=1", "--focus=50", "--break=10", "--alarm=none"};
+    char *eq_empty[] = {"vex-timer", "--sessions=", "--focus=25", "--break=5"};
+    char *eq_bad[] = {"vex-timer", "--sessions=4x", "--focus=25", "--break=5"};
+    char *eq_zero[] = {"vex-timer", "--sessions=4", "--focus=0", "--break=5"};
+    char *eq_overflow[] = {"vex-timer", "--sessions=4", "--focus=25", "--break=256"};
+    char *eq_unknown[] = {"vex-timer", "--nope=1"};
+    char *eq_help[] = {"vex-timer", "--help=1"};
+    char *eq_version[] = {"vex-timer", "--version=1"};
+    char *short_eq[] = {"vex-timer", "-s=4", "-t", "25", "-b", "5"};
+    timer_config_t config = {0};
+
+    CHECK(parse_timer_args(ARGC(eq_full), eq_full, &config) == CLI_RESULT_OK);
+    CHECK(config.session == 4);
+    CHECK(config.session_time == 25);
+    CHECK(config.break_time == 5);
+    CHECK_STRING(config.alarm, "tetris");
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(eq_mixed), eq_mixed, &config) == CLI_RESULT_OK);
+    CHECK(config.session == 4);
+    CHECK(config.session_time == 25);
+    CHECK(config.break_time == 5);
+
+    memset(&config, 0, sizeof(config));
+    CHECK(parse_timer_args(ARGC(eq_none), eq_none, &config) == CLI_RESULT_OK);
+    CHECK(config.session == 1);
+    CHECK(vext_alarm_is_none(config.alarm));
+
+    CHECK(parse_quiet(ARGC(eq_empty), eq_empty, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_bad), eq_bad, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_zero), eq_zero, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_overflow), eq_overflow, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_unknown), eq_unknown, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_help), eq_help, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(eq_version), eq_version, &config) == CLI_RESULT_ERROR);
+    CHECK(parse_quiet(ARGC(short_eq), short_eq, &config) == CLI_RESULT_ERROR);
+}
+
 void test_cli(void)
 {
     test_parse_value();
     test_valid_options();
     test_information_options();
     test_invalid_options();
+    test_inline_value_options();
     test_alarm_names();
 }

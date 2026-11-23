@@ -55,6 +55,8 @@ void print_usage(FILE *stream)
             "  -h, --help         show this help message\n"
             "  -v, --version      show version information\n"
             "\n"
+            "Long options also accept the --name=value form, e.g. --focus=25.\n"
+            "\n"
             "Alarm sounds:\n"
             "  ",
             VEXT_MAX_SESSIONS, VEXT_MAX_MINUTES, VEXT_MAX_MINUTES, VEXT_DEFAULT_ALARM);
@@ -80,6 +82,35 @@ void print_version(void)
     printf("vex-timer %s\n", VEX_VERSION);
 }
 
+/*
+ * Match arg against a long option name. Returns 1 when arg is exactly
+ * "--name" or "--name=value"; for the latter, *inline_value points at the
+ * text after '='. Returns 0 for any other string.
+ */
+static int match_long_option(const char *arg, const char *name, const char **inline_value)
+{
+    size_t name_len = strlen(name);
+
+    if (strncmp(arg, name, name_len) != 0)
+        return 0;
+
+    if (arg[name_len] == '\0')
+    {
+        if (inline_value != NULL)
+            *inline_value = NULL;
+        return 1;
+    }
+
+    if (arg[name_len] == '=')
+    {
+        if (inline_value != NULL)
+            *inline_value = arg + name_len + 1;
+        return 1;
+    }
+
+    return 0;
+}
+
 cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_config)
 {
     int seen_sessions = 0;
@@ -92,61 +123,88 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
     for (int i = 1; i < argc; i++)
     {
         const char *arg = argv[i];
+        const char *inline_value = NULL;
         uint32_t *value = NULL;
         int *seen = NULL;
         uint32_t max = 0;
         const char *label = NULL;
 
-        if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
-            return CLI_RESULT_HELP;
-
-        if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0)
-            return CLI_RESULT_VERSION;
-
-        if (strcmp(arg, "-a") == 0 || strcmp(arg, "--alarm") == 0)
+        if (strcmp(arg, "-h") == 0 || match_long_option(arg, "--help", &inline_value))
         {
+            if (inline_value != NULL)
+            {
+                fprintf(stderr, "E: option '--help' does not take a value\n");
+                return CLI_RESULT_ERROR;
+            }
+
+            return CLI_RESULT_HELP;
+        }
+
+        if (strcmp(arg, "-v") == 0 || match_long_option(arg, "--version", &inline_value))
+        {
+            if (inline_value != NULL)
+            {
+                fprintf(stderr, "E: option '--version' does not take a value\n");
+                return CLI_RESULT_ERROR;
+            }
+
+            return CLI_RESULT_VERSION;
+        }
+
+        if (strcmp(arg, "-a") == 0 || match_long_option(arg, "--alarm", &inline_value))
+        {
+            const char *alarm_value = inline_value;
+
             if (seen_alarm)
             {
                 fprintf(stderr, "E: option '%s' was specified more than once\n", arg);
                 return CLI_RESULT_ERROR;
             }
 
-            if (i + 1 >= argc)
+            if (alarm_value == NULL)
             {
-                fprintf(stderr, "E: option '%s' requires a value\n", arg);
-                print_usage(stderr);
-                return CLI_RESULT_ERROR;
+                if (i + 1 >= argc)
+                {
+                    fprintf(stderr, "E: option '%s' requires a value\n", arg);
+                    print_usage(stderr);
+                    return CLI_RESULT_ERROR;
+                }
+
+                alarm_value = argv[i + 1];
             }
 
-            if (!vext_alarm_is_valid(argv[i + 1]))
+            if (!vext_alarm_is_valid(alarm_value))
             {
-                fprintf(stderr, "E: unknown alarm '%s' (available: ", argv[i + 1]);
+                fprintf(stderr, "E: unknown alarm '%s' (available: ", alarm_value);
                 vext_alarm_print_names(stderr);
                 fprintf(stderr, ")\n");
                 return CLI_RESULT_ERROR;
             }
 
-            timer_config->alarm = argv[i + 1];
+            timer_config->alarm = alarm_value;
             seen_alarm = 1;
-            i++;
+
+            if (inline_value == NULL)
+                i++;
+
             continue;
         }
 
-        if (strcmp(arg, "-s") == 0 || strcmp(arg, "--sessions") == 0)
+        if (strcmp(arg, "-s") == 0 || match_long_option(arg, "--sessions", &inline_value))
         {
             value = &timer_config->session;
             seen = &seen_sessions;
             max = VEXT_MAX_SESSIONS;
             label = "session count";
         }
-        else if (strcmp(arg, "-t") == 0 || strcmp(arg, "--focus") == 0)
+        else if (strcmp(arg, "-t") == 0 || match_long_option(arg, "--focus", &inline_value))
         {
             value = &timer_config->session_time;
             seen = &seen_focus;
             max = VEXT_MAX_MINUTES;
             label = "focus duration";
         }
-        else if (strcmp(arg, "-b") == 0 || strcmp(arg, "--break") == 0)
+        else if (strcmp(arg, "-b") == 0 || match_long_option(arg, "--break", &inline_value))
         {
             value = &timer_config->break_time;
             seen = &seen_break;
@@ -166,22 +224,33 @@ cli_result_t parse_timer_args(int argc, char *argv[], timer_config_t *timer_conf
             return CLI_RESULT_ERROR;
         }
 
-        if (i + 1 >= argc)
         {
-            fprintf(stderr, "E: option '%s' requires a value\n", arg);
-            print_usage(stderr);
-            return CLI_RESULT_ERROR;
-        }
+            const char *text = inline_value;
 
-        if (!cli_parse_value(argv[i + 1], max, value))
-        {
-            fprintf(stderr, "E: invalid %s '%s' (expected an integer from 1 to %u)\n",
-                    label, argv[i + 1], max);
-            return CLI_RESULT_ERROR;
-        }
+            if (text == NULL)
+            {
+                if (i + 1 >= argc)
+                {
+                    fprintf(stderr, "E: option '%s' requires a value\n", arg);
+                    print_usage(stderr);
+                    return CLI_RESULT_ERROR;
+                }
 
-        *seen = 1;
-        i++;
+                text = argv[i + 1];
+            }
+
+            if (!cli_parse_value(text, max, value))
+            {
+                fprintf(stderr, "E: invalid %s '%s' (expected an integer from 1 to %u)\n",
+                        label, text, max);
+                return CLI_RESULT_ERROR;
+            }
+
+            *seen = 1;
+
+            if (inline_value == NULL)
+                i++;
+        }
     }
 
     if (!seen_sessions || !seen_focus || !seen_break)
