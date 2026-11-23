@@ -38,7 +38,7 @@ YELLOW = \033[1;33m
 RED    = \033[1;31m
 RESET  = \033[0m
 
-.PHONY: all clean rebuild test
+.PHONY: all clean rebuild test install uninstall
 
 all: $(TARGET)
 
@@ -68,3 +68,14 @@ clean:
 	@rm -rf $(BUILD_DIR) $(TARGET)
 
 rebuild: clean all
+
+PREFIX ?= /usr/local
+
+install: $(TARGET)
+	@printf "$(GREEN)==> Installing$(RESET) %s to %s/bin\n" "$(TARGET)" "$(PREFIX)"
+	@mkdir -p $(DESTDIR)$(PREFIX)/bin
+	@cp $(TARGET) $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+
+uninstall:
+	@printf "$(YELLOW)==> Removing$(RESET) %s from %s/bin\n" "$(TARGET)" "$(PREFIX)"
+	@rm -f $(DESTDIR)$(PREFIX)/bin/$(TARGET)
