@@ -62,3 +62,26 @@ jobs:
             echo "expected --help=1 to fail" >&2
             exit 1
           fi
+
+  sanitizer-build:
+    name: ubuntu-latest / gcc / sanitizers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build and test with ASan and UBSan
+        run: |
+          SAN_FLAGS="-Wall -Wextra -Werror -std=c11 -I. -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+          make CC=gcc CFLAGS="$SAN_FLAGS" LDFLAGS="-lm -fsanitize=address,undefined"
+          make test CC=gcc CFLAGS="$SAN_FLAGS" LDFLAGS="-lm -fsanitize=address,undefined"
+
+      - name: CLI smoke test
+        run: |
+          ./vex-timer --version
+
+          if ./vex-timer -s 0 -t 25 -b 5 >/dev/null 2>&1; then
+            echo "expected invalid arguments to fail" >&2
+            exit 1
+          fi
