@@ -54,9 +54,9 @@ vext_counter_status_t vext_counter_v2(timer_config_t *timer_config)
 
     if (timer_config->paused)
     {
+        /* While paused the remaining time is frozen, so a steady poll for
+           key presses is all that is needed. */
         wait_ns = VEXT_PAUSE_POLL_NS;
-        if (timer_config->paused_remaining_ns < wait_ns)
-            wait_ns = timer_config->paused_remaining_ns;
     }
     else
     {
