@@ -47,5 +47,14 @@ void vext_notify(const char *summary, const char *body)
                        "notify-send -a vex-timer -u normal '%s' '%s'", summary, body);
 
     if (written > 0 && written < (int)sizeof(command))
-        system(command);
+    {
+        /*
+         * A -1 result means the shell itself could not be run (for example a
+         * fork failure), so treat notifications as unavailable for the rest
+         * of the run. A nonzero exit status from notify-send is transient and
+         * deliberately ignored.
+         */
+        if (system(command) == -1)
+            g_notify_available = 0;
+    }
 }

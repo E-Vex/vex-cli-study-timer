@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - While paused, the key poll now waits a steady 200 ms instead of
   shrinking the wait to the remaining phase time, which could busy-poll
   when very little time was left.
+- GCC builds with `_FORTIFY_SOURCE` active (Ubuntu enables it by default
+  at `-O2`) no longer fail under `-Werror` on the `system()` call that
+  sends notifications. The return value is now checked, and a failed
+  shell spawn disables notifications for the rest of the run; a nonzero
+  exit status from `notify-send` itself is still ignored as transient.
 
 ### Changed
 
