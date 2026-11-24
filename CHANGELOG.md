@@ -43,6 +43,13 @@ Semantic Versioning.
 - CI now also builds and runs the test suite with AddressSanitizer and
   UndefinedBehaviorSanitizer, and smoke-tests `make install` and
   `make uninstall` against a staged `DESTDIR` on every runner.
+- The live display now honors `NO_COLOR` (any non-empty value, per
+  <https://no-color.org>) and `TERM=dumb`, and disables colors automatically
+  when stdout is not a terminal, falling back to plain text. Cursor control
+  such as the per-second line rewrite is unchanged.
+- New unit tests covering the color decision and the plain-text output of
+  the break and finish frames, verified end to end under a pty with and
+  without `NO_COLOR` and through a pipe.
 - More unit tests: counter pause paths, plan-summary edge cases, and
   stricter value-parsing variants.
 

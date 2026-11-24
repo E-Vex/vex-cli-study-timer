@@ -32,6 +32,8 @@ not make the countdown drift.
 - Desktop notifications when `notify-send` is available
 - Live countdown, progress bar, and session counter
 - Drift-resistant monotonic timing
+- ANSI-colored display that honors `NO_COLOR` and `dumb` terminals, and turns
+  itself off automatically when stdout is not a terminal
 - Strict CLI parsing with clear error messages and exit codes, including the
   `--name=value` form for long options
 - Terminal-bell fallback when `aplay` is unavailable or stdin is not a terminal

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "timer/timer.h"
+#include "timer/print.h"
 #include "cli/cli.h"
 #include "input/input.h"
 
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
     {
         int result;
 
+        vext_color_init();
         vext_input_init();
         result = vext_controller(&timer_config);
         vext_input_restore();

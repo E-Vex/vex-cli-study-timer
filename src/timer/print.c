@@ -1,5 +1,9 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "print.h"
 
@@ -19,11 +23,40 @@
 #define LONG_BREAK_COLOR BRIGHT_MAGENTA
 #define FINISH_COLOR BRIGHT_YELLOW
 
-#define LOGO_LINE(txt) BRIGHT_YELLOW BOLD txt RESET "\n"
-
 #define BAR_WIDTH 20
 
 #define BOX_INNER_WIDTH 65
+
+static int g_color_enabled = 1;
+
+/* Returns the escape sequence when color output is on, "" otherwise. */
+static const char *col(const char *sequence)
+{
+    return g_color_enabled ? sequence : "";
+}
+
+void vext_color_init(void)
+{
+    const char *no_color = getenv("NO_COLOR");
+    const char *term = getenv("TERM");
+
+    if (no_color != NULL && *no_color != '\0')
+        g_color_enabled = 0; /* https://no-color.org: any non-empty value */
+    else if (term != NULL && strcmp(term, "dumb") == 0)
+        g_color_enabled = 0;
+    else
+        g_color_enabled = isatty(STDOUT_FILENO) ? 1 : 0;
+}
+
+void vext_color_set_enabled(int enabled)
+{
+    g_color_enabled = enabled ? 1 : 0;
+}
+
+int vext_color_enabled(void)
+{
+    return g_color_enabled;
+}
 
 static void print_box_border(const char *left_corner, const char *right_corner)
 {
@@ -89,20 +122,28 @@ void display_info(const timer_config_t *timer_config)
            minutes_word(summary.total_minutes));
 }
 
+static const char *const g_logo[] = {
+    "  ██╗   ██╗███████╗██╗  ██╗      ████████╗██╗███╗   ███╗███████╗██████╗ ",
+    "  ██║   ██║██╔════╝╚██╗██╔╝      ╚══██╔══╝██║████╗ ████║██╔════╝██╔══██╗",
+    "  ██║   ██║█████╗   ╚███╔╝ █████╗   ██║   ██║██╔████╔██║█████╗  ██████╔╝",
+    "  ╚██╗ ██╔╝██╔══╝   ██╔██╗ ╚════╝   ██║   ██║██║╚██╔╝██║██╔══╝  ██╔══██╗",
+    "   ╚████╔╝ ███████╗██╔╝ ██╗         ██║   ██║██║ ╚═╝ ██║███████╗██║  ██║",
+    "    ╚═══╝  ╚══════╝╚═╝  ╚═╝         ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝",
+};
+
 void display_banner(void)
 {
-    printf(LOGO_LINE("  ██╗   ██╗███████╗██╗  ██╗      ████████╗██╗███╗   ███╗███████╗██████╗ "));
-    printf(LOGO_LINE("  ██║   ██║██╔════╝╚██╗██╔╝      ╚══██╔══╝██║████╗ ████║██╔════╝██╔══██╗"));
-    printf(LOGO_LINE("  ██║   ██║█████╗   ╚███╔╝ █████╗   ██║   ██║██╔████╔██║█████╗  ██████╔╝"));
-    printf(LOGO_LINE("  ╚██╗ ██╔╝██╔══╝   ██╔██╗ ╚════╝   ██║   ██║██║╚██╔╝██║██╔══╝  ██╔══██╗"));
-    printf(LOGO_LINE("   ╚████╔╝ ███████╗██╔╝ ██╗         ██║   ██║██║ ╚═╝ ██║███████╗██║  ██║"));
-    printf(LOGO_LINE("    ╚═══╝  ╚══════╝╚═╝  ╚═╝         ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝"));
+    size_t i;
+
+    for (i = 0; i < sizeof(g_logo) / sizeof(g_logo[0]); i++)
+        printf("%s%s%s%s\n", col(BRIGHT_YELLOW), col(BOLD), g_logo[i], col(RESET));
+
     printf("\n");
 }
 
 void display_controls(void)
 {
-    printf(DIM "Controls: [Space/P] pause  [S] skip  [Q] quit" RESET "\n");
+    printf("%sControls: [Space/P] pause  [S] skip  [Q] quit%s\n", col(DIM), col(RESET));
 }
 
 void display_finish(const timer_config_t *timer_config)
@@ -126,7 +167,7 @@ void display_finish(const timer_config_t *timer_config)
     snprintf(total_line, sizeof(total_line), "   Total time         :  %lu %s", summary.total_minutes,
              minutes_word(summary.total_minutes));
 
-    printf("\n" FINISH_COLOR BOLD);
+    printf("\n%s%s", col(FINISH_COLOR), col(BOLD));
     print_box_border("╔", "╗");
     print_box_line("");
     print_box_centered("  *  Well done! Session complete  *");
@@ -141,7 +182,7 @@ void display_finish(const timer_config_t *timer_config)
     print_box_line(total_line);
     print_box_line("");
     print_box_border("╚", "╝");
-    printf(RESET "\n");
+    printf("%s\n", col(RESET));
 }
 
 static void print_progress_bar(unsigned int remaining_seconds, unsigned int total_seconds, const char *color)
@@ -158,23 +199,24 @@ static void print_progress_bar(unsigned int remaining_seconds, unsigned int tota
     percent = (elapsed_seconds * 100) / total_seconds;
     filled = (elapsed_seconds * BAR_WIDTH) / total_seconds;
 
-    printf("[%s", color);
+    printf("[%s", col(color));
     for (i = 0; i < filled; i++)
         printf("█");
-    printf(RESET DIM);
+    printf("%s%s", col(RESET), col(DIM));
     for (i = filled; i < BAR_WIDTH; i++)
         printf("░");
-    printf(RESET "] %3u%%", percent);
+    printf("%s] %3u%%", col(RESET), percent);
 }
 
 static void display_study_running(const timer_config_t *timer_config, unsigned int s, unsigned int m, unsigned int h,
                                   unsigned int remaining_seconds, unsigned int total_seconds, int paused)
 {
-    printf("\r\033[2K" STUDY_COLOR BOLD "Study" RESET "  %02u:%02u:%02u | session %u/%u",
+    printf("\r\033[2K%s%sStudy%s  %02u:%02u:%02u | session %u/%u",
+           col(STUDY_COLOR), col(BOLD), col(RESET),
            h, m, s, timer_config->ses, timer_config->session);
 
     if (paused)
-        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+        printf(" %s%s[PAUSED]%s", col(BRIGHT_YELLOW), col(BOLD), col(RESET));
 
     printf("  ");
     print_progress_bar(remaining_seconds, total_seconds, STUDY_COLOR);
@@ -184,10 +226,11 @@ static void display_study_running(const timer_config_t *timer_config, unsigned i
 static void display_break_running(unsigned int s, unsigned int m, unsigned int h,
                                   unsigned int remaining_seconds, unsigned int total_seconds, int paused)
 {
-    printf("\r\033[2K" BREAK_COLOR BOLD "Break" RESET "  %02u:%02u:%02u", h, m, s);
+    printf("\r\033[2K%s%sBreak%s  %02u:%02u:%02u",
+           col(BREAK_COLOR), col(BOLD), col(RESET), h, m, s);
 
     if (paused)
-        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+        printf(" %s%s[PAUSED]%s", col(BRIGHT_YELLOW), col(BOLD), col(RESET));
 
     printf("  ");
     print_progress_bar(remaining_seconds, total_seconds, BREAK_COLOR);
@@ -197,10 +240,11 @@ static void display_break_running(unsigned int s, unsigned int m, unsigned int h
 static void display_long_break_running(unsigned int s, unsigned int m, unsigned int h,
                                        unsigned int remaining_seconds, unsigned int total_seconds, int paused)
 {
-    printf("\r\033[2K" LONG_BREAK_COLOR BOLD "Long break" RESET "  %02u:%02u:%02u", h, m, s);
+    printf("\r\033[2K%s%sLong break%s  %02u:%02u:%02u",
+           col(LONG_BREAK_COLOR), col(BOLD), col(RESET), h, m, s);
 
     if (paused)
-        printf(" " BRIGHT_YELLOW BOLD "[PAUSED]" RESET);
+        printf(" %s%s[PAUSED]%s", col(BRIGHT_YELLOW), col(BOLD), col(RESET));
 
     printf("  ");
     print_progress_bar(remaining_seconds, total_seconds, LONG_BREAK_COLOR);

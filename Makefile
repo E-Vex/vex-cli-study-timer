@@ -20,6 +20,7 @@ TEST_SRC = \
 tests/test_main.c \
 tests/test_cli.c \
 tests/test_notify.c \
+tests/test_print.c \
 tests/test_timer.c
 
 TARGET = vex-timer
