@@ -1,0 +1,139 @@
+.TH VEX-TIMER 1 "2026-11-24" "vex-timer 1.4.0" "User Commands"
+.SH NAME
+vex-timer \- a command-line study timer
+.SH SYNOPSIS
+.B vex-timer
+.B \-s
+.I sessions
+.B \-t
+.I focus-minutes
+.B \-b
+.I break-minutes
+.RB [ \-l
+.IR long\-break\-minutes ]
+.RB [ \-r
+.IR every ]
+.RB [ \-a
+.IR alarm ]
+.RB [ \-\-no\-notify ]
+.br
+.B vex-timer \-h | \-\-help
+.br
+.B vex-timer \-v | \-\-version
+.SH DESCRIPTION
+.B vex-timer
+schedules focus sessions and breaks, draws a live progress display, and plays
+a synthesized chiptune alarm when a phase ends.
+.PP
+Each phase is driven by an absolute deadline using
+.BR clock_gettime (2) " (" CLOCK_MONOTONIC ),
+so delayed renders or interrupted sleeps do not make the countdown drift.
+.SH OPTIONS
+.TP
+.BI \-s " sessions" | \-\-sessions= N
+Number of study sessions, from 1 to 255. Required.
+.TP
+.BI \-t " focus-minutes" | \-\-focus= N
+Focus duration in minutes, from 1 to 255. Required.
+.TP
+.BI \-b " break-minutes" | \-\-break= N
+Break duration in minutes, from 1 to 255. Required.
+.TP
+.BI \-l " long-break-minutes" | \-\-long\-break= N
+Long break duration in minutes, from 1 to 255. Optional; when omitted, no
+long breaks run.
+.TP
+.BI \-r " every" | \-\-long\-break\-every= N
+Take a long break after every N sessions, from 1 to 255 (default 4).
+Requires \fB\-l\fR. Long breaks run between sessions only, never after the
+final one.
+.TP
+.BI \-a " alarm" | \-\-alarm= NAME
+Alarm sound (default: \fBmegalovania\fR). See \fBALARM SOUNDS\fR below.
+.TP
+.B \-\-no\-notify
+Disable desktop notifications. Notifications are only sent when
+.BR notify\-send (1)
+is installed; otherwise every notification is a silent no-op.
+.TP
+.B \-h ", " \-\-help
+Show help and exit. The \fB\-\-help=value\fR form is rejected.
+.TP
+.B \-v ", " \-\-version
+Show version information and exit.
+.PP
+Long options also accept the \fB\-\-name=value\fR form, for example
+\fB\-\-focus=25\fR or \fB\-\-alarm=tetris\fR. Values are whole minutes only;
+signs, decimals, and trailing garbage are rejected.
+.SH CONTROLS
+Controls require an interactive terminal. When stdin is redirected the timer
+still runs, but keyboard controls are unavailable and phase alarms use the
+terminal bell.
+.TP
+.B "Space or P"
+Pause or resume the current phase.
+.TP
+.B S
+Skip the current phase. The phase is counted as completed.
+.TP
+.B Q
+Quit immediately with exit status 130.
+.TP
+.B "Any key"
+Stop a ringing alarm or the finish fanfare.
+.TP
+.B Ctrl+C
+Quit immediately with exit status 130.
+.SH "ALARM SOUNDS"
+megalovania (default), remix, jazz, call-response, pvz, tetris, mario,
+imperial, addictive, beep, hard-to-say-goodbye, cinematic, garden-guardian,
+final-showdown, victory, none (silent; also skips the finish fanfare).
+Audio playback pipes 16-bit mono 44.1 kHz samples to
+.BR aplay (1)
+and is Linux-only; when
+.B aplay
+is unavailable the timer falls back to the terminal bell.
+.SH ENVIRONMENT
+.TP
+.B NO_COLOR
+When set to a non-empty value (regardless of its content), colors are
+disabled in the live display. Colors are also disabled automatically when
+stdout is not a terminal or \fBTERM\fR is \fBdumb\fR. See
+.UR https://no-color.org/
+.UE .
+.TP
+.B TERM
+A value of \fBdumb\fR disables colors in the live display.
+.SH EXIT STATUS
+.TP
+.B 0
+Completed successfully, or \fB\-\-help\fR / \fB\-\-version\fR was used.
+.TP
+.B 1
+Invalid arguments or configuration.
+.TP
+.B 130
+Interrupted with Ctrl+C or Q.
+.TP
+.BR "128 + signal"
+Terminated by another handled signal, for example 143 for SIGTERM.
+.SH EXAMPLES
+.TP
+.B "vex-timer \-s 4 \-t 25 \-b 5"
+Four 25-minute focus sessions with 5-minute breaks.
+.TP
+.B "vex-timer \-s 8 \-t 25 \-b 5 \-l 15 \-r 4"
+Classic Pomodoro: a 15-minute break after every fourth session.
+.TP
+.B "vex-timer \-\-sessions=8 \-\-focus=25 \-\-break=5 \-\-alarm=tetris"
+The \fB\-\-name=value\fR form with the Tetris theme as the alarm.
+.TP
+.B "vex-timer \-s 1 \-t 50 \-b 1 \-a none \-\-no\-notify"
+A single 50-minute focus session with no sound or notifications.
+.SH SEE ALSO
+.BR aplay (1),
+.BR notify\-send (1)
+.SH AUTHORS
+Built by E-Vex <https://github.com/E-Vex>.
+.SH LICENSE
+MIT. See the LICENSE file in the source distribution.

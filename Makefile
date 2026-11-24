@@ -31,7 +31,7 @@ DEP = $(OBJ:.o=.d)
 TEST_OBJ = $(TEST_SRC:%.c=$(BUILD_DIR)/%.o) $(LIB_SRC:%.c=$(BUILD_DIR)/%.o)
 TEST_TARGET = $(BUILD_DIR)/tests/run-tests
 
-# ---- ألوان للإخراج (تُعطَّل تلقائياً إذا لم يكن الطرفية تدعم الألوان) ----
+# ---- Output colors for build messages ----
 BLUE   = \033[1;34m
 GREEN  = \033[1;32m
 YELLOW = \033[1;33m
@@ -75,7 +75,12 @@ install: $(TARGET)
 	@printf "$(GREEN)==> Installing$(RESET) %s to %s/bin\n" "$(TARGET)" "$(PREFIX)"
 	@mkdir -p $(DESTDIR)$(PREFIX)/bin
 	@cp $(TARGET) $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+	@printf "$(GREEN)==> Installing$(RESET) docs/vex-timer.1 to %s/share/man/man1\n" "$(PREFIX)"
+	@mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	@cp docs/vex-timer.1 $(DESTDIR)$(PREFIX)/share/man/man1/
 
 uninstall:
 	@printf "$(YELLOW)==> Removing$(RESET) %s from %s/bin\n" "$(TARGET)" "$(PREFIX)"
 	@rm -f $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+	@printf "$(YELLOW)==> Removing$(RESET) docs/vex-timer.1 from %s/share/man/man1\n" "$(PREFIX)"
+	@rm -f $(DESTDIR)$(PREFIX)/share/man/man1/vex-timer.1

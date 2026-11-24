@@ -57,9 +57,9 @@ make
 
 Run `make clean` to remove build artifacts, or `make rebuild` to start fresh.
 
-Install the binary onto your `PATH` with `make install` (defaults to
-`/usr/local/bin`; override with `PREFIX=...`, or `DESTDIR=...` for staged
-packaging). `make uninstall` removes it again.
+Install the binary and the `vex-timer(1)` manual page onto your system with
+`make install` (defaults to `/usr/local`; override with `PREFIX=...`, or
+`DESTDIR=...` for staged packaging). `make uninstall` removes both again.
 
 You can also compile manually:
 
@@ -200,6 +200,8 @@ vex-cli-study-timer/
 │       └── ci.yml
 ├── assets/
 │   └── demo.png
+├── docs/
+│   └── vex-timer.1
 ├── sounds/
 │   ├── tone.c
 │   └── tone.h
@@ -249,7 +251,7 @@ The test suite covers strict integer parsing, option validation, alarm-name
 validation, timer range checks, the phase-deadline completion path, and the
 pause bookkeeping. CI runs the same tests on Ubuntu with GCC and Clang and
 on macOS with Clang, plus an AddressSanitizer and UndefinedBehaviorSanitizer
-build on Ubuntu.
+build on Ubuntu, and a staged install/uninstall smoke test on every runner.
 
 ## Exit Codes
 

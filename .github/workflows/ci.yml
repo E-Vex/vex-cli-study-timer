@@ -63,6 +63,18 @@ jobs:
             exit 1
           fi
 
+      - name: Install smoke test
+        run: |
+          make install DESTDIR="$PWD/stage"
+
+          test -x stage/usr/local/bin/vex-timer
+          test -f stage/usr/local/share/man/man1/vex-timer.1
+
+          make uninstall DESTDIR="$PWD/stage"
+
+          test ! -e stage/usr/local/bin/vex-timer
+          test ! -e stage/usr/local/share/man/man1/vex-timer.1
+
   sanitizer-build:
     name: ubuntu-latest / gcc / sanitizers
     runs-on: ubuntu-latest

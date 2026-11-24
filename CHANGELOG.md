@@ -5,7 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.3.1] - 2026-11-24
+## [1.4.0] - 2026-11-24
+
+The pending 1.3.1 release was never published, and this cycle ships new
+features on top of the fixes below, so it is released as 1.4.0 per
+Semantic Versioning.
 
 ### Fixed
 
@@ -32,9 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `make install` and `make uninstall` targets with `PREFIX` and `DESTDIR`
-  support for staged packaging.
+  support for staged packaging. They now install and remove the
+  `vex-timer(1)` manual page alongside the binary.
+- A `vex-timer(1)` manual page under `docs/`, installed to
+  `$(PREFIX)/share/man/man1` by `make install`.
 - CI now also builds and runs the test suite with AddressSanitizer and
-  UndefinedBehaviorSanitizer.
+  UndefinedBehaviorSanitizer, and smoke-tests `make install` and
+  `make uninstall` against a staged `DESTDIR` on every runner.
 - More unit tests: counter pause paths, plan-summary edge cases, and
   stricter value-parsing variants.
 
