@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `make uninstall` now also removes the directories it created when they are
+  empty after the uninstall, like the uninstall rules autoconf generates. A
+  staged `DESTDIR` tree is left completely clean, while shared system
+  directories are never touched when they still hold other files.
+
 ## [1.4.0] - 2026-11-24
 
 The pending 1.3.1 release was never published, and this cycle ships new

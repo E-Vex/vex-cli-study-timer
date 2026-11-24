@@ -74,6 +74,8 @@ jobs:
 
           test ! -e stage/usr/local/bin/vex-timer
           test ! -e stage/usr/local/share/man/man1/vex-timer.1
+          # Uninstall also removes the now-empty directories it created.
+          test ! -e stage
 
   sanitizer-build:
     name: ubuntu-latest / gcc / sanitizers

@@ -85,3 +85,19 @@ uninstall:
 	@rm -f $(DESTDIR)$(PREFIX)/bin/$(TARGET)
 	@printf "$(YELLOW)==> Removing$(RESET) docs/vex-timer.1 from %s/share/man/man1\n" "$(PREFIX)"
 	@rm -f $(DESTDIR)$(PREFIX)/share/man/man1/vex-timer.1
+	@# Best-effort cleanup of the directories this package created, like the
+	@# uninstall rules autoconf generates: rmdir only succeeds when the
+	@# directory is empty, so shared system directories are never touched.
+	-@rmdir $(DESTDIR)$(PREFIX)/bin 2>/dev/null || true
+	-@rmdir $(DESTDIR)$(PREFIX)/share/man/man1 2>/dev/null || true
+	-@rmdir $(DESTDIR)$(PREFIX)/share/man 2>/dev/null || true
+	-@rmdir $(DESTDIR)$(PREFIX)/share 2>/dev/null || true
+	-@rmdir $(DESTDIR)$(PREFIX) 2>/dev/null || true
+	-@if [ -n "$(DESTDIR)" ]; then \
+		d="$(DESTDIR)"; p="$(DESTDIR)$(PREFIX)"; \
+		while [ "$$p" != "$$d" ] && [ -n "$$p" ] && [ "$$p" != "/" ]; do \
+			rmdir "$$p" 2>/dev/null || true; \
+			p=$$(dirname "$$p"); \
+		done; \
+		rmdir "$$d" 2>/dev/null || true; \
+	fi
