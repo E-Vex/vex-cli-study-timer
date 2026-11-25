@@ -190,7 +190,9 @@ jobs:
 
       - name: Build .rpm
         run: |
-          rpmdir="$WORK_DIR/rpmbuild"
+          # rpmbuild resolves its macros from inside its own scriptlets, so
+          # every path handed to it must be absolute.
+          rpmdir="$PWD/$WORK_DIR/rpmbuild"
           mkdir -p "$rpmdir/BUILD" "$rpmdir/RPMS" "$rpmdir/SOURCES" "$rpmdir/SPECS" "$rpmdir/SRPMS"
 
           # rpmbuild extracts Source0 as vex-timer-$version/ inside its build
