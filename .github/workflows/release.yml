@@ -49,12 +49,23 @@ jobs:
       IS_RELEASE_EVENT: ${{ github.event_name == 'release' }}
       DIST_DIR: dist
       WORK_DIR: release-build
+      # Packaging templates always come from the commit that launched the
+      # workflow, so releases tagged before the pipeline existed (or after a
+      # template tweak) are packaged with the current pipeline, not with
+      # whatever happened to be frozen inside the tag.
+      TEMPLATES: templates
 
     steps:
-      - name: Check out source
+      - name: Check out release source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+
+      - name: Check out workflow and packaging templates
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: templates
 
       - name: Verify version consistency
         run: |
@@ -126,7 +137,7 @@ jobs:
               -e "s/@ARCH@/${{ matrix.arch }}/g" \
               -e "s/@DEB_ARCH@/${{ matrix.deb-arch }}/g" \
               -e "s/@RPM_ARCH@/${{ matrix.rpm-arch }}/g" \
-              packaging/tarball/INSTALL.txt.in > "$WORK_DIR/$name/INSTALL.txt"
+              "$TEMPLATES/packaging/tarball/INSTALL.txt.in" > "$WORK_DIR/$name/INSTALL.txt"
           tar --owner=0 --group=0 -czf "$DIST_DIR/$name.tar.gz" -C "$WORK_DIR" "$name"
 
           # Bare binary for scripted downloads, matching the naming the
@@ -147,12 +158,12 @@ jobs:
           cp "$WORK_DIR/vex-timer.1.gz" "$appdir/usr/share/man/man1/"
           cp LICENSE "$appdir/usr/share/doc/vex-timer/LICENSE"
 
-          sed -e "s/@VERSION@/$version/g" packaging/appimage/vex-timer.desktop > "$appdir/vex-timer.desktop"
+          sed -e "s/@VERSION@/$version/g" "$TEMPLATES/packaging/appimage/vex-timer.desktop" > "$appdir/vex-timer.desktop"
           cp "$appdir/vex-timer.desktop" "$appdir/usr/share/applications/vex-timer.desktop"
-          cp packaging/appimage/vex-timer.svg "$appdir/vex-timer.svg"
-          cp packaging/appimage/vex-timer.svg "$appdir/usr/share/icons/hicolor/scalable/apps/vex-timer.svg"
+          cp "$TEMPLATES/packaging/appimage/vex-timer.svg" "$appdir/vex-timer.svg"
+          cp "$TEMPLATES/packaging/appimage/vex-timer.svg" "$appdir/usr/share/icons/hicolor/scalable/apps/vex-timer.svg"
           ln -sf vex-timer.svg "$appdir/.DirIcon"
-          cp packaging/appimage/AppRun "$appdir/AppRun"
+          cp "$TEMPLATES/packaging/appimage/AppRun" "$appdir/AppRun"
           chmod 755 "$appdir/AppRun" "$appdir/usr/bin/vex-timer"
 
           curl -sfL -o "$WORK_DIR/appimagetool.AppImage" "${{ matrix.appimagetool-url }}"
@@ -175,12 +186,12 @@ jobs:
           cp "$WORK_DIR/stage/usr/bin/vex-timer" "$pkg/usr/bin/vex-timer"
           chmod 755 "$pkg/usr/bin/vex-timer"
           cp "$WORK_DIR/vex-timer.1.gz" "$pkg/usr/share/man/man1/"
-          cp packaging/deb/copyright "$pkg/usr/share/doc/vex-timer/copyright"
+          cp "$TEMPLATES/packaging/deb/copyright" "$pkg/usr/share/doc/vex-timer/copyright"
 
           sed -e "s/@VERSION@/$version/g" \
               -e "s/@DEB_ARCH@/${{ matrix.deb-arch }}/g" \
               -e "s/@INSTALLED_SIZE@/$(du -sk "$pkg/usr" | cut -f1)/g" \
-              packaging/deb/control.in > "$pkg/DEBIAN/control"
+              "$TEMPLATES/packaging/deb/control.in" > "$pkg/DEBIAN/control"
 
           dpkg-deb --build --root-owner-group "$pkg" \
             "$DIST_DIR/vex-timer_${version}_${{ matrix.deb-arch }}.deb"
@@ -204,7 +215,7 @@ jobs:
           cp LICENSE "$src/LICENSE"
           tar --owner=0 --group=0 -czf "$rpmdir/SOURCES/vex-timer-$version.tar.gz" -C "$WORK_DIR" "vex-timer-$version"
 
-          sed -e "s/@VERSION@/$version/g" packaging/rpm/vex-timer.spec.in > "$rpmdir/SPECS/vex-timer.spec"
+          sed -e "s/@VERSION@/$version/g" "$TEMPLATES/packaging/rpm/vex-timer.spec.in" > "$rpmdir/SPECS/vex-timer.spec"
 
           rpmbuild --define "_topdir $rpmdir" \
                    --define "_dbpath $rpmdir/db" \
