@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A release pipeline (`.github/workflows/release.yml`) that builds and
+  attaches prebuilt Linux artifacts to every published GitHub release: a
+  statically linked `vex-timer` binary, a portable tarball with the manual
+  page and installation instructions, an AppImage, and `.deb` and `.rpm`
+  packages — for x86_64 and arm64 — plus a `SHA256SUMS` checksum file.
+  Source archives and previously uploaded release assets are left intact.
+- `packaging/` templates for the AppImage (AppRun, desktop entry, icon),
+  the deb control and copyright metadata, the rpm spec, and the tarball
+  `INSTALL.txt`.
+- `docs/RELEASE.md` documenting how to cut a release and how to test the
+  pipeline with a manual workflow dispatch.
+
 ### Fixed
 
 - `make uninstall` now also removes the directories it created when they are

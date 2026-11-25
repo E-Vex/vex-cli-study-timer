@@ -14,6 +14,9 @@
   <a href="https://github.com/E-Vex/vex-cli-study-timer/actions/workflows/ci.yml">
     <img src="https://github.com/E-Vex/vex-cli-study-timer/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
+  <a href="https://github.com/E-Vex/vex-cli-study-timer/actions/workflows/release.yml">
+    <img src="https://github.com/E-Vex/vex-cli-study-timer/actions/workflows/release.yml/badge.svg" alt="Release">
+  </a>
 </p>
 
 A small command-line study timer written in C. It schedules focus sessions and
@@ -22,6 +25,67 @@ breaks, draws a live progress display, and plays a synthesized chiptune alarm.
 Each phase is driven by an absolute monotonic deadline using
 `clock_gettime(CLOCK_MONOTONIC)`, so delayed renders or interrupted sleeps do
 not make the countdown drift.
+
+## Install
+
+Prebuilt Linux binaries and packages are attached to every
+[GitHub release](https://github.com/E-Vex/vex-cli-study-timer/releases), so
+you can download and run the timer without cloning or building anything.
+Each release offers the assets below for both **x86_64** and **arm64**, plus
+a `SHA256SUMS` file to verify the downloads.
+
+| Asset | Use it when you want to ... |
+| --- | --- |
+| `vex-timer-<version>-linux-<arch>.AppImage` | Run anywhere without installing; single file |
+| `vex-timer_<version>_<debarch>.deb` | Install on Debian, Ubuntu, Mint, Pop!_OS, ... |
+| `vex-timer-<version>-1.<rpmarch>.rpm` | Install on Fedora, RHEL, openSUSE, ... |
+| `vex-timer-<version>-linux-<arch>.tar.gz` | Unpack a binary + manual page anywhere, optionally install to `/usr/local` |
+| `vex-timer-<version>-linux-<arch>` | Script a direct download of the bare binary |
+
+The shipped binaries are statically linked, so they have no shared-library
+dependencies and run on any Linux distribution. `aplay` (alsa-utils) and
+`notify-send` (libnotify-bin) remain optional runtime helpers for sound and
+desktop notifications.
+
+**AppImage** - download, make it executable, run:
+
+```bash
+chmod +x vex-timer-1.4.0-linux-x86_64.AppImage
+./vex-timer-1.4.0-linux-x86_64.AppImage -s 4 -t 25 -b 5
+```
+
+**Debian / Ubuntu and derivatives:**
+
+```bash
+sudo apt install ./vex-timer_1.4.0_amd64.deb
+vex-timer -s 4 -t 25 -b 5
+```
+
+**Fedora / RHEL / openSUSE and derivatives:**
+
+```bash
+sudo dnf install ./vex-timer-1.4.0-1.x86_64.rpm
+vex-timer -s 4 -t 25 -b 5
+```
+
+(older rpm distributions accept `sudo rpm -i vex-timer-1.4.0-1.x86_64.rpm`)
+
+**Portable tarball** - extract and run immediately, with an optional
+system-wide install:
+
+```bash
+tar -xzf vex-timer-1.4.0-linux-x86_64.tar.gz
+cd vex-timer-1.4.0-linux-x86_64
+./vex-timer -s 4 -t 25 -b 5
+
+# optional: install the binary and the manual page
+sudo install -m 755 vex-timer /usr/local/bin/vex-timer
+sudo install -m 644 share/man/man1/vex-timer.1.gz /usr/share/man/man1/
+```
+
+Verify a download against the release's `SHA256SUMS` file with
+`sha256sum -c --ignore-missing SHA256SUMS`. See [docs/RELEASE.md](docs/RELEASE.md)
+for how these artifacts are built and published.
 
 ## Features
 
@@ -49,7 +113,9 @@ not make the countdown drift.
   keyboard controls
 
 CI builds and tests the timer on Linux with GCC and Clang, and on macOS with
-Clang. Audio playback uses `aplay`, so sound is Linux-only.
+Clang. Audio playback uses `aplay`, so sound is Linux-only. Release builds
+are statically linked and produced for Linux x86_64 and arm64 by the
+release workflow; see [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Build
 
@@ -199,11 +265,25 @@ terminal bell.
 vex-cli-study-timer/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml
+│       ├── ci.yml
+│       └── release.yml
 ├── assets/
 │   └── demo.png
 ├── docs/
+│   ├── RELEASE.md
 │   └── vex-timer.1
+├── packaging/
+│   ├── appimage/
+│   │   ├── AppRun
+│   │   ├── vex-timer.desktop
+│   │   └── vex-timer.svg
+│   ├── deb/
+│   │   ├── control.in
+│   │   └── copyright
+│   ├── rpm/
+│   │   └── vex-timer.spec.in
+│   └── tarball/
+│       └── INSTALL.txt.in
 ├── sounds/
 │   ├── tone.c
 │   └── tone.h

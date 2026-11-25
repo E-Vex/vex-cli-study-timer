@@ -1,0 +1,5 @@
+#!/bin/sh
+# AppRun launcher for the Vex CLI Study Timer AppImage.
+# Forwards all arguments to the packaged binary.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/vex-timer" "$@"

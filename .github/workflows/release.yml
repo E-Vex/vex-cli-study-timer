@@ -1,0 +1,268 @@
+name: Release
+
+# Builds the Linux release artifacts (static binary, tarball, AppImage,
+# .deb, .rpm) for x86_64 and arm64 and attaches them to a published release.
+#
+# It also runs on workflow_dispatch so the pipeline can be exercised without
+# cutting a release: leave "tag" empty for a build-only test run, or set it
+# to an existing release tag (e.g. v1.4.0) to (re-)upload that release's
+# artifacts.
+
+"on":
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to attach artifacts to (empty = build only, do not upload)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    name: linux / ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            deb-arch: amd64
+            rpm-arch: x86_64
+            appimagetool-url: https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            deb-arch: arm64
+            rpm-arch: aarch64
+            appimagetool-url: https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage
+
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      IS_RELEASE_EVENT: ${{ github.event_name == 'release' }}
+      DIST_DIR: dist
+      WORK_DIR: release-build
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+
+      - name: Verify version consistency
+        run: |
+          repo_version="$(sed -n 's/^#define VEX_VERSION "\(.*\)"/\1/p' src/version.h)"
+          tag_version="${RELEASE_TAG#v}"
+
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Build-only run: artifacts will be named with the source version $repo_version."
+          elif [ "$repo_version" != "$tag_version" ]; then
+            message="src/version.h defines '$repo_version' but release tag '$RELEASE_TAG' implies '$tag_version'. Bump src/version.h (and the changelog) and re-publish the release."
+            if [ "$IS_RELEASE_EVENT" = "true" ]; then
+              echo "::error::$message"
+              exit 1
+            else
+              echo "::warning::$message (continuing because this is a manual dispatch run)"
+            fi
+          fi
+          # Name artifacts after the tag when one is given, else after the source.
+          version="${tag_version:-$repo_version}"
+          echo "version=$version" >> "$GITHUB_ENV"
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Build and test (statically linked)
+        run: |
+          # Release binaries are fully static, so a single binary per
+          # architecture runs on every Linux distribution without any
+          # shared-library dependency.
+          CFLAGS="-Wall -Wextra -Werror -std=c11 -I. -O2"
+          LDFLAGS="-s -lm -static"
+          make clean
+          make CC=gcc CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
+          make test CC=gcc CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
+
+      - name: Smoke test the binary
+        run: |
+          ./vex-timer --version
+          ./vex-timer --help >/dev/null
+
+          file vex-timer | grep -q 'statically linked' \
+            || { echo "expected a statically linked binary" >&2; exit 1; }
+
+          if [ -n "$RELEASE_TAG" ]; then
+            ./vex-timer --version | grep -qx "vex-timer $version" \
+              || { echo "--version does not report $version" >&2; exit 1; }
+          fi
+
+      - name: Stage install tree
+        run: |
+          # Reuses the same install layout that `make install` gives users.
+          make install DESTDIR="$PWD/$WORK_DIR/stage" PREFIX=/usr
+          test -x "$WORK_DIR/stage/usr/bin/vex-timer"
+          test -f "$WORK_DIR/stage/usr/share/man/man1/vex-timer.1"
+          gzip -n -9 -c docs/vex-timer.1 > "$WORK_DIR/vex-timer.1.gz"
+
+      - name: Build portable tarball and bare binary
+        run: |
+          name="vex-timer-$version-linux-${{ matrix.arch }}"
+          mkdir -p "$WORK_DIR/$name/share/man/man1"
+          cp vex-timer "$WORK_DIR/$name/vex-timer"
+          cp "$WORK_DIR/vex-timer.1.gz" "$WORK_DIR/$name/share/man/man1/"
+          cp LICENSE "$WORK_DIR/$name/LICENSE"
+          sed -e "s/@VERSION@/$version/g" \
+              -e "s/@TAG@/v$version/g" \
+              -e "s/@ARCH@/${{ matrix.arch }}/g" \
+              -e "s/@DEB_ARCH@/${{ matrix.deb-arch }}/g" \
+              -e "s/@RPM_ARCH@/${{ matrix.rpm-arch }}/g" \
+              packaging/tarball/INSTALL.txt.in > "$WORK_DIR/$name/INSTALL.txt"
+          tar --owner=0 --group=0 -czf "$DIST_DIR/$name.tar.gz" -C "$WORK_DIR" "$name"
+
+          # Bare binary for scripted downloads, matching the naming the
+          # project used for its first manual release asset.
+          cp vex-timer "$DIST_DIR/vex-timer-$version-linux-${{ matrix.arch }}"
+          chmod 755 "$DIST_DIR/vex-timer-$version-linux-${{ matrix.arch }}"
+
+      - name: Build AppImage
+        run: |
+          appdir="$WORK_DIR/AppDir"
+          mkdir -p "$appdir/usr/bin" \
+                   "$appdir/usr/share/applications" \
+                   "$appdir/usr/share/icons/hicolor/scalable/apps" \
+                   "$appdir/usr/share/man/man1" \
+                   "$appdir/usr/share/doc/vex-timer"
+
+          cp vex-timer "$appdir/usr/bin/vex-timer"
+          cp "$WORK_DIR/vex-timer.1.gz" "$appdir/usr/share/man/man1/"
+          cp LICENSE "$appdir/usr/share/doc/vex-timer/LICENSE"
+
+          sed -e "s/@VERSION@/$version/g" packaging/appimage/vex-timer.desktop > "$appdir/vex-timer.desktop"
+          cp "$appdir/vex-timer.desktop" "$appdir/usr/share/applications/vex-timer.desktop"
+          cp packaging/appimage/vex-timer.svg "$appdir/vex-timer.svg"
+          cp packaging/appimage/vex-timer.svg "$appdir/usr/share/icons/hicolor/scalable/apps/vex-timer.svg"
+          ln -sf vex-timer.svg "$appdir/.DirIcon"
+          cp packaging/appimage/AppRun "$appdir/AppRun"
+          chmod 755 "$appdir/AppRun" "$appdir/usr/bin/vex-timer"
+
+          curl -sfL -o "$WORK_DIR/appimagetool.AppImage" "${{ matrix.appimagetool-url }}"
+          chmod 755 "$WORK_DIR/appimagetool.AppImage"
+          # APPIMAGE_EXTRACT_AND_RUN=1 keeps the tool working on runners
+          # without FUSE.
+          APPIMAGE_EXTRACT_AND_RUN=1 "$WORK_DIR/appimagetool.AppImage" --no-appstream \
+            "$appdir" "$DIST_DIR/vex-timer-$version-linux-${{ matrix.arch }}.AppImage"
+
+          test -x "$DIST_DIR/vex-timer-$version-linux-${{ matrix.arch }}.AppImage"
+
+      - name: Build .deb
+        run: |
+          pkg="$WORK_DIR/deb-pkg"
+          mkdir -p "$pkg/DEBIAN" \
+                   "$pkg/usr/bin" \
+                   "$pkg/usr/share/man/man1" \
+                   "$pkg/usr/share/doc/vex-timer"
+
+          cp "$WORK_DIR/stage/usr/bin/vex-timer" "$pkg/usr/bin/vex-timer"
+          chmod 755 "$pkg/usr/bin/vex-timer"
+          cp "$WORK_DIR/vex-timer.1.gz" "$pkg/usr/share/man/man1/"
+          cp packaging/deb/copyright "$pkg/usr/share/doc/vex-timer/copyright"
+
+          sed -e "s/@VERSION@/$version/g" \
+              -e "s/@DEB_ARCH@/${{ matrix.deb-arch }}/g" \
+              -e "s/@INSTALLED_SIZE@/$(du -sk "$pkg/usr" | cut -f1)/g" \
+              packaging/deb/control.in > "$pkg/DEBIAN/control"
+
+          dpkg-deb --build --root-owner-group "$pkg" \
+            "$DIST_DIR/vex-timer_${version}_${{ matrix.deb-arch }}.deb"
+
+          # Fails the build if the package metadata is malformed.
+          dpkg-deb -I "$DIST_DIR/vex-timer_${version}_${{ matrix.deb-arch }}.deb" >/dev/null
+
+      - name: Build .rpm
+        run: |
+          rpmdir="$WORK_DIR/rpmbuild"
+          mkdir -p "$rpmdir/BUILD" "$rpmdir/RPMS" "$rpmdir/SOURCES" "$rpmdir/SPECS" "$rpmdir/SRPMS"
+
+          # rpmbuild extracts Source0 as vex-timer-$version/ inside its build
+          # area, so the source archive uses that exact top-level layout.
+          src="$WORK_DIR/vex-timer-$version"
+          mkdir -p "$src/share/man/man1"
+          cp vex-timer "$src/vex-timer"
+          cp "$WORK_DIR/vex-timer.1.gz" "$src/share/man/man1/"
+          cp LICENSE "$src/LICENSE"
+          tar --owner=0 --group=0 -czf "$rpmdir/SOURCES/vex-timer-$version.tar.gz" -C "$WORK_DIR" "vex-timer-$version"
+
+          sed -e "s/@VERSION@/$version/g" packaging/rpm/vex-timer.spec.in > "$rpmdir/SPECS/vex-timer.spec"
+
+          rpmbuild --define "_topdir $rpmdir" \
+                   --define "_dbpath $rpmdir/db" \
+                   --target ${{ matrix.rpm-arch }} -bb "$rpmdir/SPECS/vex-timer.spec"
+
+          # Wildcard copy tolerates release-suffix macros (%{?dist}) if a
+          # distro's rpm defines one.
+          cp "$rpmdir/RPMS/${{ matrix.rpm-arch }}/vex-timer-"*.rpm "$DIST_DIR/"
+
+      - name: List artifacts
+        run: ls -la "$DIST_DIR"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: attach artifacts to release
+    needs: [linux]
+    # Skip for build-only dispatch runs without a tag.
+    if: github.event_name == 'release' || inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: linux-*
+          merge-multiple: true
+          path: dist
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attach artifacts to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "::warning::No tag resolved; skipping upload."
+            exit 0
+          fi
+
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null; then
+            echo "::warning::No release exists for tag '$RELEASE_TAG'; skipping upload."
+            exit 0
+          fi
+
+          # --clobber keeps re-runs idempotent and never touches assets this
+          # workflow did not produce.
+          gh release upload "$RELEASE_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          echo "Attached to https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"

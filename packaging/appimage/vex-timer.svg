@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4252"/>
+      <stop offset="1" stop-color="#2e3440"/>
+    </linearGradient>
+  </defs>
+  <!-- crown button -->
+  <rect x="58" y="4" width="12" height="12" rx="3" fill="#e6b30e"/>
+  <rect x="54" y="12" width="20" height="8" rx="3" fill="#ffd43b"/>
+  <!-- side buttons -->
+  <rect x="8" y="34" width="10" height="8" rx="3" fill="#e6b30e"/>
+  <rect x="110" y="34" width="10" height="8" rx="3" fill="#e6b30e"/>
+  <!-- case -->
+  <circle cx="64" cy="70" r="52" fill="#e6b30e"/>
+  <circle cx="64" cy="70" r="45" fill="url(#face)"/>
+  <!-- tick marks -->
+  <g stroke="#8f96a3" stroke-width="3" stroke-linecap="round">
+    <line x1="64" y1="32" x2="64" y2="40"/>
+    <line x1="64" y1="100" x2="64" y2="108"/>
+    <line x1="26" y1="70" x2="34" y2="70"/>
+    <line x1="94" y1="70" x2="102" y2="70"/>
+  </g>
+  <g stroke="#5c6370" stroke-width="2" stroke-linecap="round">
+    <line x1="42" y1="42" x2="46" y2="47"/>
+    <line x1="86" y1="42" x2="82" y2="47"/>
+    <line x1="42" y1="98" x2="46" y2="93"/>
+    <line x1="86" y1="98" x2="82" y2="93"/>
+  </g>
+  <!-- hands -->
+  <line x1="64" y1="70" x2="64" y2="44" stroke="#ffd43b" stroke-width="5" stroke-linecap="round"/>
+  <line x1="64" y1="70" x2="86" y2="78" stroke="#eceff4" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="70" r="5" fill="#ffd43b"/>
+  <circle cx="64" cy="70" r="2" fill="#2e3440"/>
+</svg>

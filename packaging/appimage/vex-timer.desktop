@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Vex Timer
+GenericName=Study Timer
+Comment=Schedule focus sessions and breaks from the command line
+Exec=vex-timer
+Icon=vex-timer
+Terminal=true
+Categories=Utility;Education;
+Keywords=timer;pomodoro;study;focus;
+X-AppImage-Version=@VERSION@

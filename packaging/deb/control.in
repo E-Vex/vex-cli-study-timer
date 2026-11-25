@@ -1,0 +1,19 @@
+Package: vex-timer
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @DEB_ARCH@
+Installed-Size: @INSTALLED_SIZE@
+Maintainer: E-Vex <raiedaleve@gmail.com>
+Homepage: https://github.com/E-Vex/vex-cli-study-timer
+Description: Command-line study timer with chiptune alarms and desktop notifications
+ Vex CLI Study Timer schedules focus sessions and breaks, draws a live
+ progress display, and plays a synthesized chiptune alarm when a phase
+ completes. Sessions, focus, break, and long-break cadence are all
+ configurable, and timing is drift-resistant absolute CLOCK_MONOTONIC
+ deadline tracking.
+ .
+ The binary is statically linked, so the package has no shared-library
+ dependencies. Sound playback additionally uses aplay from alsa-utils and
+ desktop notifications use notify-send from libnotify-bin (both optional).
+Suggests: alsa-utils, libnotify-bin

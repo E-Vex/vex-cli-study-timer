@@ -1,0 +1,45 @@
+Name:           vex-timer
+Version:        @VERSION@
+Release:        1%{?dist}
+Summary:        Command-line study timer with chiptune alarms and desktop notifications
+
+License:        MIT
+URL:            https://github.com/E-Vex/vex-cli-study-timer
+Source0:        %{name}-%{version}.tar.gz
+
+# The shipped binary is statically linked: no automatic shared-library
+# dependencies to discover, and none needed at runtime.
+AutoReqProv:    no
+
+# A statically linked release binary ships no separate debug symbols, so
+# there is nothing for a debuginfo package to carry.
+%global debug_package %{nil}
+
+%description
+Vex CLI Study Timer schedules focus sessions and breaks, draws a live
+progress display, and plays a synthesized chiptune alarm when a phase
+completes. Sessions, focus, break, and long-break cadence are all
+configurable, and timing is drift-resistant absolute CLOCK_MONOTONIC
+deadline tracking.
+
+The packaged binary is statically linked, so it runs without additional
+shared-library dependencies. Sound playback additionally uses aplay from
+alsa-utils and desktop notifications use notify-send (both optional).
+
+%prep
+%setup -q
+
+%install
+mkdir -p '%{buildroot}%{_bindir}' '%{buildroot}%{_mandir}/man1'
+install -m 0755 vex-timer '%{buildroot}%{_bindir}/vex-timer'
+install -m 0644 share/man/man1/vex-timer.1.gz '%{buildroot}%{_mandir}/man1/vex-timer.1.gz'
+
+%files
+%license LICENSE
+%{_bindir}/vex-timer
+%{_mandir}/man1/vex-timer.1.gz
+
+%changelog
+* Wed Nov 25 2026 E-Vex <raiedaleve@gmail.com> - @VERSION@-1
+- See https://github.com/E-Vex/vex-cli-study-timer/releases/tag/v@VERSION@
+  for the upstream changelog.

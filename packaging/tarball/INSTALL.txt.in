@@ -1,0 +1,70 @@
+Vex CLI Study Timer @VERSION@ (Linux, @ARCH@)
+=============================================
+
+Thank you for downloading the prebuilt Linux build. This archive contains a
+statically linked `vex-timer` binary: it has no shared-library dependencies
+and runs on any Linux distribution (Debian, Ubuntu, Fedora, RHEL, Arch,
+openSUSE, Alpine, ...) on this architecture, as long as the kernel is new
+enough to run the toolchain that produced it (any supported kernel is fine).
+
+Contents
+--------
+
+    vex-timer                 the program
+    share/man/man1/vex-timer.1.gz   the vex-timer(1) manual page
+    LICENSE                   the MIT license text
+    INSTALL.txt               this file
+
+Run without installing
+----------------------
+
+    tar -xzf vex-timer-@VERSION@-linux-@ARCH@.tar.gz
+    cd vex-timer-@VERSION@-linux-@ARCH@
+    ./vex-timer -s 4 -t 25 -b 5
+
+The archive preserves the executable bit; if it was lost in transit, restore
+it with `chmod +x vex-timer`.
+
+Install onto the system (optional)
+----------------------------------
+
+Copy the binary and manual page into /usr/local (or any PREFIX you like):
+
+    sudo install -m 755 vex-timer /usr/local/bin/vex-timer
+    sudo install -m 644 share/man/man1/vex-timer.1.gz /usr/share/man/man1/vex-timer.1.gz
+
+Then run `vex-timer` from anywhere and read the manual with
+`man vex-timer`. Remove both files again to uninstall.
+
+Optional runtime helpers
+------------------------
+
+- `aplay` (package `alsa-utils`) plays the synthesized chiptune alarms.
+  Without it the timer falls back to the terminal bell.
+- `notify-send` (package `libnotify-bin` on Debian/Ubuntu, `libnotify` on
+  Fedora/Arch) sends desktop notifications at phase transitions. Disable
+  them with `--no-notify`.
+
+Verify the download (optional)
+------------------------------
+
+The release page publishes a SHA256SUMS file covering every artifact:
+
+    sha256sum -c --ignore-missing SHA256SUMS
+
+Other download options
+----------------------
+
+The same release page also offers:
+
+- `vex-timer-@VERSION@-linux-@ARCH@.AppImage` - single-file executable,
+  `chmod +x` it and run; nothing to install.
+- `vex-timer_@VERSION@_@DEB_ARCH@.deb` - for Debian, Ubuntu, Mint, Pop!_OS,
+  and other apt distributions: `sudo apt install ./vex-timer_@VERSION@_@DEB_ARCH@.deb`
+- `vex-timer-@VERSION@-1.@RPM_ARCH@.rpm` - for Fedora, RHEL, openSUSE, and
+  other rpm distributions: `sudo rpm -i vex-timer-@VERSION@-1.@RPM_ARCH@.rpm`
+  (or `sudo dnf install ./vex-timer-@VERSION@-1.@RPM_ARCH@.rpm`)
+- `vex-timer-@VERSION@-linux-@ARCH@` - the bare binary, for scripted
+  downloads: `chmod +x vex-timer-@VERSION@-linux-@ARCH@ && ./vex-timer-@VERSION@-linux-@ARCH@ --help`
+
+Project home: https://github.com/E-Vex/vex-cli-study-timer
