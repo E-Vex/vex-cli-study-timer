@@ -107,6 +107,7 @@ jobs:
 
       - name: Stage install tree
         run: |
+          mkdir -p "$DIST_DIR"
           # Reuses the same install layout that `make install` gives users.
           make install DESTDIR="$PWD/$WORK_DIR/stage" PREFIX=/usr
           test -x "$WORK_DIR/stage/usr/bin/vex-timer"
